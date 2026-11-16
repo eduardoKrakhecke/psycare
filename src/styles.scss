@@ -1,1 +1,20 @@
-/* You can add global styles to this file, and also import other style files */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import 'primeicons/primeicons.css';
+
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --pc-bg: #f5f8fa;
+  --pc-surface: #ffffff;
+  --pc-border: #e2e9ed;
+  --pc-text: #1c3442;
+  --pc-muted: #70818c;
+}
+:root.app-dark {
+  --pc-bg: #0b1723;
+  --pc-surface: #142435;
+  --pc-border: #284158;
+  --pc-text: #eef4f6;
+  --pc-muted: #a2b4c2;
+}
+html, body { min-height: 100%; margin: 0; }
+body { background: var(--pc-bg); color: var(--pc-text); }

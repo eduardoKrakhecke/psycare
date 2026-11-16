@@ -1,0 +1,43 @@
+.login-page {
+  min-height: 100dvh;
+  padding: 2rem 1rem;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 15% 10%, #d4f1ed, transparent 32%), #f5f8fb;
+}
+.login-card {
+  width: min(100%, 430px);
+  padding: 2.5rem;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgb(11 38 49 / 10%);
+  color: #193240;
+}
+.brand-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: #0c746f;
+  color: #fff;
+  margin-bottom: .8rem;
+  font-size: 1.2rem;
+}
+h1 { font-size: 1.7rem; font-weight: 750; margin: 0; }
+h2 { font-size: 1.2rem; margin: 2rem 0 .25rem; font-weight: 700; }
+.subtitle, .helper { color: #687c86; font-size: .9rem; }
+.subtitle { margin: .35rem 0 0; }
+.helper { margin-bottom: 1.5rem; }
+form { display: flex; flex-direction: column; gap: .7rem; }
+label { font-size: .9rem; font-weight: 650; }
+input { width: 100%; margin-bottom: .6rem; }
+.error-message {
+  background: #fff0ef;
+  color: #a72e25;
+  padding: .8rem;
+  border-radius: 9px;
+  margin-bottom: 1rem;
+  font-size: .9rem;
+}
+.footnote { text-align: center; color: #85949d; font-size: .8rem; margin: 1.8rem 0 0; }

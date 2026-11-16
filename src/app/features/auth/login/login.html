@@ -1,0 +1,51 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="brand-icon"><i class="pi pi-heart"></i></div>
+    <h1>PsyCare</h1>
+    <p class="subtitle">Gestão inteligente para clínicas de psicologia</p>
+
+    <h2>Acesse sua conta</h2>
+    <p class="helper">Entre com o usuário autorizado pela clínica.</p>
+
+    @if (error()) {
+      <div class="error-message" role="alert">{{ error() }}</div>
+    }
+
+    <form #loginForm="ngForm" (ngSubmit)="submit()">
+      <label for="email">E-mail</label>
+      <input
+        pInputText
+        id="email"
+        type="email"
+        name="email"
+        [(ngModel)]="email"
+        required
+        email
+        autocomplete="username"
+        placeholder="voce@clinica.com.br"
+      />
+
+      <label for="password">Senha</label>
+      <input
+        pInputText
+        id="password"
+        type="password"
+        name="password"
+        [(ngModel)]="password"
+        required
+        autocomplete="current-password"
+        placeholder="Sua senha"
+      />
+
+      <p-button
+        type="submit"
+        label="Entrar no PsyCare"
+        icon="pi pi-sign-in"
+        [loading]="loading()"
+        [disabled]="loginForm.invalid || loading()"
+        styleClass="w-100"
+      />
+    </form>
+    <p class="footnote">Acesso restrito aos profissionais autorizados.</p>
+  </div>
+</div>

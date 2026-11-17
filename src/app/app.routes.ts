@@ -31,6 +31,19 @@ export const routes: Routes = [
           import('./features/dashboard/dashboard')
             .then(m => m.Dashboard)
       },
+
+      {
+        path: 'documents',
+        title: 'Documentos | PsyCare',
+        canActivate: [roleGuard],
+        data: {
+          roles: ['admin', 'psychologist']
+        },
+        loadComponent: () =>
+          import('./features/documents/documents')
+            .then(m => m.Documents)
+      },
+
       {
         path: 'appointments',
         title: 'Agenda | PsyCare',

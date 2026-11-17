@@ -5,6 +5,7 @@ import {
   collection,
   doc,
   getDocs,
+  getDocFromServer,
   limit,
   query,
   serverTimestamp,
@@ -27,6 +28,25 @@ export class ProfessionalService {
     environment.clinicId,
     'professionals'
   ] as const;
+
+  async getById(id: string): Promise<Professional | null> {
+    const reference = doc(
+      firestore,
+      ...this.path,
+      id
+    );
+
+    const snapshot = await getDocFromServer(reference);
+
+    if (!snapshot.exists()) {
+      return null;
+    }
+
+    return {
+      ...(snapshot.data() as Omit<Professional, 'id'>),
+      id: snapshot.id
+    };
+  }
 
   async list(): Promise<Professional[]> {
     const ref = collection(firestore, ...this.path);

@@ -2,9 +2,11 @@
 import {
   Component,
   computed,
+  ElementRef,
   inject,
   OnInit,
-  signal
+  signal,
+  ViewChild
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
@@ -24,6 +26,9 @@ import { PsychologicalDocumentService }
 import { DocumentPdfService }
   from '../../core/services/document-pdf.service';
 
+import type { DocumentPdfOptions }
+  from '../../core/services/document-pdf.service';
+
 import type { Patient }
   from '../../core/models/patient.model';
 
@@ -33,8 +38,12 @@ import type { Professional }
 import {
   DOCUMENT_TYPES,
   documentTypeLabel,
+  emptyDocumentDetails,
   localDocumentDate,
+  type DocumentAuditEntry,
+  type DocumentDetails,
   type DocumentInput,
+  type DocumentStatus,
   type PsychologicalDocument,
   type PsychologicalDocumentType
 } from '../../core/models/psychological-document.model';
@@ -44,7 +53,8 @@ function emptyDocument(): DocumentInput {
     type: 'declaration',
     title: 'Declaração',
     content: '',
-    documentDate: localDocumentDate()
+    documentDate: localDocumentDate(),
+    details: emptyDocumentDetails()
   };
 }
 
@@ -71,6 +81,8 @@ export class Documents implements OnInit {
   readonly patients = signal<Patient[]>([]);
   readonly professionals = signal<Professional[]>([]);
   readonly documents = signal<PsychologicalDocument[]>([]);
+  readonly audit = signal<DocumentAuditEntry[]>([]);
+  readonly historyDocumentId = signal<string | null>(null);
 
   readonly selectedPatientId = signal('');
   readonly editingId = signal<string | null>(null);
@@ -80,9 +92,20 @@ export class Documents implements OnInit {
   readonly loadingDocuments = signal(false);
   readonly saving = signal(false);
   readonly downloadingId = signal<string | null>(null);
+  readonly workflowId = signal<string | null>(null);
+  readonly signatureModalOpen = signal(false);
+  readonly signatureDocument =
+    signal<PsychologicalDocument | null>(null);
+  readonly signatureHasInk = signal(false);
 
   readonly error = signal('');
   readonly success = signal('');
+
+  @ViewChild('signatureCanvas')
+  private signatureCanvas?: ElementRef<HTMLCanvasElement>;
+
+  private signatureContext: CanvasRenderingContext2D | null = null;
+  private signatureDrawing = false;
 
   readonly isAdmin = computed(() =>
     this.members.currentMember()?.role === 'admin'
@@ -262,7 +285,11 @@ export class Documents implements OnInit {
       type: document.type,
       title: document.title,
       content: document.content,
-      documentDate: document.documentDate
+      documentDate: document.documentDate,
+      details: {
+        ...emptyDocumentDetails(),
+        ...(document.details ?? {})
+      }
     };
 
     this.formProfessionalId = document.professionalId;
@@ -298,6 +325,280 @@ export class Documents implements OnInit {
     }
 
     this.form.type = type;
+    this.form.details = emptyDocumentDetails();
+    this.form.content = '';
+  }
+
+  detail(key: keyof DocumentDetails): string {
+    return this.form.details[key] ?? '';
+  }
+
+  generateContent(): void {
+    const labels: Partial<Record<keyof DocumentDetails, string>> = {
+      purpose: 'Finalidade',
+      requestedBy: 'Solicitante',
+      attendancePeriod: 'Periodo de acompanhamento',
+      demand: 'Demanda',
+      procedure: 'Procedimentos e recursos',
+      analysis: 'Analise',
+      conclusion: 'Conclusao',
+      recommendations: 'Orientacoes e encaminhamentos',
+      professionalsInvolved: 'Profissionais envolvidos',
+      methods: 'Metodos e instrumentos',
+      results: 'Resultados',
+      question: 'Questao apresentada',
+      foundation: 'Fundamentacao',
+      destination: 'Destino',
+      referralReason: 'Motivo do encaminhamento',
+      diagnosis: 'Registro diagnostico',
+      evidence: 'Elementos considerados'
+    };
+
+    this.form.content = Object.entries(labels)
+      .map(([key, label]) => ({
+        label,
+        value: this.detail(key as keyof DocumentDetails).trim()
+      }))
+      .filter(item => item.value)
+      .map(item => `${item.label}\n${item.value}`)
+      .join('\n\n');
+  }
+
+  statusLabel(status: DocumentStatus): string {
+    return {
+      draft: 'Rascunho',
+      in_review: 'Em revisao',
+      approved: 'Aprovado',
+      rejected: 'Rejeitado',
+      signed: 'Assinado externamente'
+    }[status];
+  }
+
+  statusClass(status: DocumentStatus): string {
+    return `status-${status.replace('_', '-')}`;
+  }
+
+  async submitForReview(document: PsychologicalDocument): Promise<void> {
+    if (this.workflowId()) return;
+
+    this.workflowId.set(document.id);
+    this.error.set('');
+
+    try {
+      await this.documentService.submitForReview(
+        this.selectedPatientId(),
+        document.id
+      );
+      await this.loadDocuments();
+      this.success.set('Documento enviado para revisao.');
+    } catch (error) {
+      this.error.set(
+        error instanceof Error
+          ? error.message
+          : 'Nao foi possivel enviar o documento para revisao.'
+      );
+    } finally {
+      this.workflowId.set(null);
+    }
+  }
+
+  async reviewDocument(
+    document: PsychologicalDocument,
+    approved: boolean
+  ): Promise<void> {
+    if (this.workflowId()) return;
+
+    const comment = window.prompt(
+      approved
+        ? 'Comentario da aprovacao (opcional):'
+        : 'Informe o motivo da rejeicao:'
+    );
+
+    if (comment === null || (!approved && !comment.trim())) {
+      return;
+    }
+
+    this.workflowId.set(document.id);
+    this.error.set('');
+
+    try {
+      await this.documentService.review(
+        this.selectedPatientId(),
+        document.id,
+        approved,
+        comment
+      );
+      await this.loadDocuments();
+      this.success.set(
+        approved
+          ? 'Documento aprovado.'
+          : 'Documento rejeitado e devolvido para ajustes.'
+      );
+    } catch (error) {
+      this.error.set(
+        error instanceof Error
+          ? error.message
+          : 'Nao foi possivel concluir a revisao.'
+      );
+    } finally {
+      this.workflowId.set(null);
+    }
+  }
+
+  signDocument(document: PsychologicalDocument): void {
+    if (this.workflowId()) return;
+
+    this.signatureDocument.set(document);
+    this.signatureHasInk.set(false);
+    this.signatureModalOpen.set(true);
+    this.error.set('');
+    this.success.set('');
+
+    requestAnimationFrame(() => this.initializeSignatureCanvas());
+  }
+
+  private initializeSignatureCanvas(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+
+    if (!canvas) return;
+
+    const ratio = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth || 640;
+    const height = canvas.clientHeight || 220;
+
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+
+    this.signatureContext = canvas.getContext('2d');
+
+    if (!this.signatureContext) return;
+
+    this.signatureContext.scale(ratio, ratio);
+    this.signatureContext.lineCap = 'round';
+    this.signatureContext.lineJoin = 'round';
+    this.signatureContext.lineWidth = 2.4;
+    this.signatureContext.strokeStyle = '#172a46';
+  }
+
+  private signaturePoint(event: PointerEvent): {
+    x: number;
+    y: number;
+  } | null {
+    const canvas = this.signatureCanvas?.nativeElement;
+
+    if (!canvas) return null;
+
+    const bounds = canvas.getBoundingClientRect();
+
+    return {
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top
+    };
+  }
+
+  startSignature(event: PointerEvent): void {
+    const point = this.signaturePoint(event);
+
+    if (!point || !this.signatureContext) return;
+
+    this.signatureDrawing = true;
+    event.currentTarget instanceof HTMLCanvasElement &&
+      event.currentTarget.setPointerCapture(event.pointerId);
+    this.signatureContext.beginPath();
+    this.signatureContext.moveTo(point.x, point.y);
+  }
+
+  drawSignature(event: PointerEvent): void {
+    const point = this.signaturePoint(event);
+
+    if (!this.signatureDrawing || !point || !this.signatureContext) {
+      return;
+    }
+
+    this.signatureContext.lineTo(point.x, point.y);
+    this.signatureContext.stroke();
+    this.signatureHasInk.set(true);
+  }
+
+  endSignature(): void {
+    this.signatureDrawing = false;
+  }
+
+  clearSignature(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+
+    if (!canvas || !this.signatureContext) return;
+
+    this.signatureContext.clearRect(
+      0,
+      0,
+      canvas.clientWidth,
+      canvas.clientHeight
+    );
+    this.signatureHasInk.set(false);
+  }
+
+  closeSignatureModal(force = false): void {
+    if (this.workflowId() && !force) return;
+
+    this.signatureModalOpen.set(false);
+    this.signatureDocument.set(null);
+    this.signatureHasInk.set(false);
+    this.signatureContext = null;
+    this.signatureDrawing = false;
+  }
+
+  async confirmDrawnSignature(): Promise<void> {
+    const document = this.signatureDocument();
+    const canvas = this.signatureCanvas?.nativeElement;
+
+    if (!document || !canvas || !this.signatureHasInk()) {
+      this.error.set('Desenhe sua assinatura antes de confirmar.');
+      return;
+    }
+
+    this.workflowId.set(document.id);
+    this.error.set('');
+
+    try {
+      await this.documentService.registerDrawnSignature(
+        this.selectedPatientId(),
+        document.id,
+        canvas.toDataURL('image/png')
+      );
+      this.closeSignatureModal(true);
+      await this.loadDocuments();
+      this.success.set(
+        'Assinatura desenhada registrada e auditada.'
+      );
+    } catch (error) {
+      this.error.set(
+        error instanceof Error
+          ? error.message
+          : 'Nao foi possivel registrar a assinatura.'
+      );
+    } finally {
+      this.workflowId.set(null);
+    }
+  }
+
+  async showHistory(document: PsychologicalDocument): Promise<void> {
+    if (this.historyDocumentId() === document.id) {
+      this.historyDocumentId.set(null);
+      this.audit.set([]);
+      return;
+    }
+
+    try {
+      const audit = await this.documentService.listAudit(
+        this.selectedPatientId(),
+        document.id
+      );
+      this.audit.set(audit);
+      this.historyDocumentId.set(document.id);
+    } catch {
+      this.error.set('Nao foi possivel carregar a auditoria.');
+    }
   }
 
   typeLabel(type: PsychologicalDocumentType): string {
@@ -322,14 +623,15 @@ export class Documents implements OnInit {
 
   private async exportSavedDocument(
     patientId: string,
-    documentId: string
+    documentId: string,
+    options?: DocumentPdfOptions
   ): Promise<void> {
     const stored = await this.documentService.getById(
       patientId,
       documentId
     );
 
-    this.pdfService.exportPdf(stored);
+    await this.pdfService.exportPdf(stored, options);
   }
 
   async download(document: PsychologicalDocument): Promise<void> {
@@ -352,6 +654,35 @@ export class Documents implements OnInit {
     }
   }
 
+  async downloadWithoutSignature(
+    document: PsychologicalDocument
+  ): Promise<void> {
+    if (this.downloadingId()) return;
+
+    this.downloadingId.set(document.id);
+    this.error.set('');
+
+    try {
+      await this.exportSavedDocument(
+        this.selectedPatientId(),
+        document.id,
+        {
+          includeSignature: false,
+          externalSigningCopy: true
+        }
+      );
+      this.success.set(
+        'PDF sem assinatura gerado para assinatura externa.'
+      );
+    } catch {
+      this.error.set(
+        'Nao foi possivel gerar o PDF sem assinatura.'
+      );
+    } finally {
+      this.downloadingId.set(null);
+    }
+  }
+
   async save(generatePdf = false): Promise<void> {
     if (this.saving() || !this.canWrite()) return;
 
@@ -367,11 +698,16 @@ export class Documents implements OnInit {
       return;
     }
 
+    if (!this.form.content.trim()) {
+      this.generateContent();
+    }
+
     const input: DocumentInput = {
       type: this.form.type,
       title: this.form.title.trim(),
       content: this.form.content.trim(),
-      documentDate: this.form.documentDate
+      documentDate: this.form.documentDate,
+      details: { ...this.form.details }
     };
 
     this.saving.set(true);

@@ -16,14 +16,61 @@ export const DOCUMENT_TYPES = [
 export type PsychologicalDocumentType =
   (typeof DOCUMENT_TYPES)[number]['value'];
 
+export type DocumentStatus =
+  | 'draft'
+  | 'in_review'
+  | 'approved'
+  | 'rejected'
+  | 'signed';
+
+export type SignatureMethod =
+  | 'drawn'
+  | 'govbr_advanced'
+  | 'icp_brasil_qualified';
+
+export interface DocumentDetails {
+  purpose?: string;
+  requestedBy?: string;
+  attendancePeriod?: string;
+  demand?: string;
+  procedure?: string;
+  analysis?: string;
+  conclusion?: string;
+  recommendations?: string;
+  professionalsInvolved?: string;
+  methods?: string;
+  results?: string;
+  question?: string;
+  foundation?: string;
+  destination?: string;
+  referralReason?: string;
+  diagnosis?: string;
+  evidence?: string;
+}
+
+export interface DocumentSignature {
+  method: SignatureMethod;
+  signerUid: string;
+  signerName: string;
+  signerCrp: string;
+  signedAt: Timestamp;
+  contentHash: string;
+  externalReference: string;
+  signatureImageDataUrl?: string;
+  signatureImagePath?: string;
+  signatureImageUrl?: string;
+}
+
 export interface DocumentInput {
   type: PsychologicalDocumentType;
   title: string;
   content: string;
   documentDate: string;
+  details: DocumentDetails;
 }
 
-export interface PsychologicalDocument extends DocumentInput {
+export interface PsychologicalDocument
+  extends Omit<DocumentInput, 'details'> {
   id: string;
 
   patientName: string;
@@ -33,13 +80,71 @@ export interface PsychologicalDocument extends DocumentInput {
   professionalName: string;
   professionalCrp: string;
 
-  status: 'draft';
+  status: DocumentStatus;
+
+  details?: DocumentDetails;
+  version?: number;
+  versionId?: string;
+  lastAuditId?: string;
+  reviewedBy?: string;
+  reviewedAt?: Timestamp;
+  reviewComment?: string;
+  signature?: DocumentSignature;
 
   createdBy: string;
   updatedBy: string;
 
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface DocumentVersion {
+  id: string;
+  version: number;
+  documentId: string;
+  snapshot: DocumentInput;
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
+export type DocumentAuditAction =
+  | 'created'
+  | 'updated'
+  | 'submitted'
+  | 'approved'
+  | 'rejected'
+  | 'signed';
+
+export interface DocumentAuditEntry {
+  id: string;
+  action: DocumentAuditAction;
+  version: number;
+  actorUid: string;
+  actorName: string;
+  comment?: string;
+  createdAt: Timestamp;
+}
+
+export function emptyDocumentDetails(): DocumentDetails {
+  return {
+    purpose: '',
+    requestedBy: '',
+    attendancePeriod: '',
+    demand: '',
+    procedure: '',
+    analysis: '',
+    conclusion: '',
+    recommendations: '',
+    professionalsInvolved: '',
+    methods: '',
+    results: '',
+    question: '',
+    foundation: '',
+    destination: '',
+    referralReason: '',
+    diagnosis: '',
+    evidence: ''
+  };
 }
 
 export function documentTypeLabel(

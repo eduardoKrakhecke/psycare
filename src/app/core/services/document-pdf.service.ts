@@ -7,6 +7,11 @@ import {
   type PsychologicalDocument
 } from '../models/psychological-document.model';
 
+export interface DocumentPdfOptions {
+  includeSignature?: boolean;
+  externalSigningCopy?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -42,7 +47,32 @@ export class DocumentPdfService {
       .slice(0, 70);
   }
 
-  exportPdf(document: PsychologicalDocument): void {
+  private async imageDataUrl(
+    url: string
+  ): Promise<string | null> {
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) return null;
+
+      const blob = await response.blob();
+
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async exportPdf(
+    document: PsychologicalDocument,
+    options: DocumentPdfOptions = {}
+  ): Promise<void> {
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -57,8 +87,17 @@ export class DocumentPdfService {
     const bottomLimit = 264;
 
     let y = 20;
+    const includeSignature = options.includeSignature !== false;
+    const externalSigningCopy =
+      options.externalSigningCopy === true;
+    const isSigned =
+      includeSignature &&
+      document.status === 'signed' &&
+      !!document.signature;
 
     const watermark = (): void => {
+      if (isSigned || externalSigningCopy) return;
+
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(31);
       pdf.setTextColor(233, 233, 233);
@@ -214,6 +253,48 @@ export class DocumentPdfService {
       5.5
     );
 
+    if (includeSignature && document.signature) {
+      const signatureImage = document.signature.signatureImageDataUrl
+        ?? (document.signature.signatureImageUrl
+          ? await this.imageDataUrl(
+            document.signature.signatureImageUrl
+          )
+          : null);
+
+      if (signatureImage) {
+        ensureSpace(36);
+        pdf.addImage(
+          signatureImage,
+          'PNG',
+          left,
+          y,
+          52,
+          26
+        );
+        y += 30;
+      }
+
+      const signatureLabel = document.signature.method === 'drawn'
+        ? 'Assinatura desenhada registrada no PsyCare'
+        : `Assinatura registrada: ${document.signature.method}`;
+
+      writeWrapped(
+        signatureLabel,
+        9,
+        5
+      );
+      writeWrapped(
+        `Referencia externa: ${document.signature.externalReference}`,
+        9,
+        5
+      );
+      writeWrapped(
+        `Hash do conteudo: ${document.signature.contentHash}`,
+        8,
+        4.5
+      );
+    }
+
     // Cabeçalho de segurança e rodapé em todas as páginas.
     const totalPages = pdf.getNumberOfPages();
 
@@ -227,11 +308,26 @@ export class DocumentPdfService {
       pdf.setFontSize(8);
       pdf.setTextColor(105, 105, 105);
 
+      if (isSigned) {
+        pdf.setTextColor(255, 255, 255);
+      }
+
       pdf.text(
         'MINUTA - Documento não assinado e não emitido.',
         20,
         282
       );
+
+      if (isSigned) {
+        pdf.setTextColor(105, 105, 105);
+        pdf.text(
+          document.signature?.method === 'drawn'
+            ? 'Assinatura desenhada registrada no PsyCare.'
+            : 'Documento assinado externamente - valide a assinatura.',
+          20,
+          282
+        );
+      }
 
       pdf.text(
         `Página ${page} de ${totalPages}`,
@@ -251,7 +347,8 @@ export class DocumentPdfService {
     const filename = [
       this.safeFilename(typeName),
       this.safeFilename(document.patientName),
-      document.documentDate
+      document.documentDate,
+      externalSigningCopy ? 'sem-assinatura' : ''
     ].join('_') + '.pdf';
 
     pdf.save(filename);

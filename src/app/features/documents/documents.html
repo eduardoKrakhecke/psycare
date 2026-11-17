@@ -220,6 +220,355 @@
           </div>
         </div>
 
+        <section class="structured-fields" aria-label="Estrutura da modalidade">
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="eyebrow">ESTRUTURA PROFISSIONAL</p>
+              <h3>Campos orientadores da modalidade</h3>
+            </div>
+
+            <small>
+              Os campos ajudam na organizacao; a responsabilidade tecnica
+              continua sendo do profissional.
+            </small>
+          </div>
+
+          @if (form.type === 'declaration') {
+            <div class="form-grid">
+              <div class="field wide">
+                <label for="detailPurpose">Finalidade da declaracao *</label>
+                <textarea
+                  id="detailPurpose"
+                  name="detailPurpose"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.purpose"
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="detailRequestedBy">Solicitante</label>
+                <input
+                  id="detailRequestedBy"
+                  name="detailRequestedBy"
+                  class="form-control"
+                  [(ngModel)]="form.details.requestedBy"
+                />
+              </div>
+            </div>
+          }
+
+          @if (form.type === 'certificate') {
+            <div class="form-grid">
+              <div class="field">
+                <label for="certificatePurpose">Finalidade *</label>
+                <textarea
+                  id="certificatePurpose"
+                  name="certificatePurpose"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.purpose"
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="attendancePeriod">Periodo de acompanhamento *</label>
+                <input
+                  id="attendancePeriod"
+                  name="attendancePeriod"
+                  class="form-control"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.attendancePeriod"
+                />
+              </div>
+            </div>
+          }
+
+          @if (
+            form.type === 'report' ||
+            form.type === 'multi_report' ||
+            form.type === 'evaluation_report'
+          ) {
+            <div class="form-grid">
+              <div class="field wide">
+                <label for="detailDemand">Demanda *</label>
+                <textarea
+                  id="detailDemand"
+                  name="detailDemand"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.demand"
+                ></textarea>
+              </div>
+
+              @if (form.type === 'multi_report') {
+                <div class="field wide">
+                  <label for="professionalsInvolved">Profissionais envolvidos *</label>
+                  <textarea
+                    id="professionalsInvolved"
+                    name="professionalsInvolved"
+                    class="form-control"
+                    rows="2"
+                    required
+                    minlength="3"
+                    [(ngModel)]="form.details.professionalsInvolved"
+                  ></textarea>
+                </div>
+              }
+
+              @if (form.type === 'evaluation_report') {
+                <div class="field wide">
+                  <label for="methods">Metodos e instrumentos *</label>
+                  <textarea
+                    id="methods"
+                    name="methods"
+                    class="form-control"
+                    rows="3"
+                    required
+                    minlength="3"
+                    [(ngModel)]="form.details.methods"
+                  ></textarea>
+                </div>
+
+                <div class="field wide">
+                  <label for="results">Resultados *</label>
+                  <textarea
+                    id="results"
+                    name="results"
+                    class="form-control"
+                    rows="3"
+                    required
+                    minlength="3"
+                    [(ngModel)]="form.details.results"
+                  ></textarea>
+                </div>
+              } @else {
+                <div class="field wide">
+                  <label for="procedure">Procedimentos e recursos *</label>
+                  <textarea
+                    id="procedure"
+                    name="procedure"
+                    class="form-control"
+                    rows="3"
+                    required
+                    minlength="3"
+                    [(ngModel)]="form.details.procedure"
+                  ></textarea>
+                </div>
+              }
+
+              <div class="field">
+                <label for="analysis">Analise *</label>
+                <textarea
+                  id="analysis"
+                  name="analysis"
+                  class="form-control"
+                  rows="4"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.analysis"
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="conclusion">Conclusao *</label>
+                <textarea
+                  id="conclusion"
+                  name="conclusion"
+                  class="form-control"
+                  rows="4"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.conclusion"
+                ></textarea>
+              </div>
+
+              @if (
+                form.type === 'report' ||
+                form.type === 'evaluation_report'
+              ) {
+                <div class="field wide">
+                  <label for="recommendations">Orientacoes e encaminhamentos *</label>
+                  <textarea
+                    id="recommendations"
+                    name="recommendations"
+                    class="form-control"
+                    rows="3"
+                    required
+                    minlength="3"
+                    [(ngModel)]="form.details.recommendations"
+                  ></textarea>
+                </div>
+              }
+            </div>
+          }
+
+          @if (form.type === 'opinion') {
+            <div class="form-grid">
+              <div class="field wide">
+                <label for="question">Questao apresentada *</label>
+                <textarea
+                  id="question"
+                  name="question"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.question"
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="foundation">Fundamentacao *</label>
+                <textarea
+                  id="foundation"
+                  name="foundation"
+                  class="form-control"
+                  rows="4"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.foundation"
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="opinionConclusion">Conclusao *</label>
+                <textarea
+                  id="opinionConclusion"
+                  name="opinionConclusion"
+                  class="form-control"
+                  rows="4"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.conclusion"
+                ></textarea>
+              </div>
+            </div>
+          }
+
+          @if (form.type === 'referral') {
+            <div class="form-grid">
+              <div class="field">
+                <label for="destination">Destino *</label>
+                <input
+                  id="destination"
+                  name="destination"
+                  class="form-control"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.destination"
+                />
+              </div>
+
+              <div class="field">
+                <label for="referralReason">Motivo *</label>
+                <textarea
+                  id="referralReason"
+                  name="referralReason"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.referralReason"
+                ></textarea>
+              </div>
+
+              <div class="field wide">
+                <label for="referralRecommendations">Orientacoes *</label>
+                <textarea
+                  id="referralRecommendations"
+                  name="referralRecommendations"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.recommendations"
+                ></textarea>
+              </div>
+            </div>
+          }
+
+          @if (form.type === 'diagnosis') {
+            <div class="form-grid">
+              <div class="field">
+                <label for="diagnosis">Registro diagnostico *</label>
+                <textarea
+                  id="diagnosis"
+                  name="diagnosis"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.diagnosis"
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="evidence">Elementos considerados *</label>
+                <textarea
+                  id="evidence"
+                  name="evidence"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.evidence"
+                ></textarea>
+              </div>
+
+              <div class="field wide">
+                <label for="diagnosisRecommendations">Orientacoes *</label>
+                <textarea
+                  id="diagnosisRecommendations"
+                  name="diagnosisRecommendations"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.recommendations"
+                ></textarea>
+              </div>
+            </div>
+          }
+
+          @if (form.type === 'other') {
+            <div class="form-grid">
+              <div class="field">
+                <label for="otherPurpose">Finalidade *</label>
+                <textarea
+                  id="otherPurpose"
+                  name="otherPurpose"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.purpose"
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="otherConclusion">Conclusao *</label>
+                <textarea
+                  id="otherConclusion"
+                  name="otherConclusion"
+                  class="form-control"
+                  rows="3"
+                  required
+                  minlength="3"
+                  [(ngModel)]="form.details.conclusion"
+                ></textarea>
+              </div>
+            </div>
+          }
+        </section>
+
         <div class="editor-columns">
           <div class="field text-editor">
             <div class="editor-label">
@@ -232,13 +581,20 @@
               </small>
             </div>
 
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary mb-2"
+              (click)="generateContent()"
+            >
+              <i class="pi pi-sparkles"></i>
+              Gerar texto estruturado
+            </button>
+
             <textarea
               id="documentContent"
               name="documentContent"
               class="form-control document-textarea"
               rows="18"
-              required
-              minlength="10"
               maxlength="20000"
               placeholder="Digite aqui o texto do atestado, declaração, relatório ou outro documento..."
               [(ngModel)]="form.content"
@@ -302,6 +658,17 @@
           A emissão profissional depende da revisão e
           assinatura por psicólogo habilitado.
         </div>
+
+        <p class="signature-notice legacy-signature-notice">
+          A assinatura não é gerada pelo PsyCare. Use o Gov.br ou um
+          certificado ICP-Brasil e registre a referência do arquivo
+          assinado somente após a validação externa.
+        </p>
+
+        <p class="signature-notice">
+          A assinatura desenhada pertence ao fluxo do PsyCare e sera
+          registrada com o documento. Ela nao substitui Gov.br ou ICP-Brasil.
+        </p>
 
         <footer class="form-actions">
           <button
@@ -398,14 +765,21 @@
                 </td>
 
                 <td>
-                  <span class="status-badge">
-                    Rascunho
+                  <span
+                    class="status-badge"
+                    [class]="statusClass(item.status)"
+                  >
+                    {{ statusLabel(item.status) }}
+                    · v{{ item.version ?? 1 }}
                   </span>
                 </td>
 
                 <td>
                   <div class="table-actions">
-                    @if (canWrite()) {
+                    @if (
+                      canWrite() &&
+                      (item.status === 'draft' || item.status === 'rejected')
+                    ) {
                       <button
                         type="button"
                         class="btn btn-sm btn-outline-primary"
@@ -416,6 +790,71 @@
                         Editar
                       </button>
                     }
+
+                    @if (
+                      canWrite() &&
+                      (item.status === 'draft' || item.status === 'rejected')
+                    ) {
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        (click)="submitForReview(item)"
+                        [disabled]="workflowId() !== null"
+                      >
+                        <i class="pi pi-send"></i>
+                        Revisar
+                      </button>
+                    }
+
+                    @if (isAdmin() && item.status === 'in_review') {
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-success"
+                        (click)="reviewDocument(item, true)"
+                        [disabled]="workflowId() !== null"
+                      >
+                        <i class="pi pi-check"></i>
+                        Aprovar
+                      </button>
+
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        (click)="reviewDocument(item, false)"
+                        [disabled]="workflowId() !== null"
+                      >
+                        <i class="pi pi-times"></i>
+                        Rejeitar
+                      </button>
+                    }
+
+                    @if (
+                      item.status === 'approved' ||
+                      item.status === 'signed'
+                    ) {
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-success"
+                        (click)="signDocument(item)"
+                        [disabled]="workflowId() !== null"
+                      >
+                        <i class="pi pi-pencil"></i>
+                        {{
+                          item.status === 'signed'
+                            ? 'Assinar novamente'
+                            : 'Assinar no PsyCare'
+                        }}
+                      </button>
+                    }
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      (click)="showHistory(item)"
+                    >
+                      <i class="pi pi-history"></i>
+                      Auditoria
+                    </button>
 
                     <button
                       type="button"
@@ -431,9 +870,47 @@
                           : 'PDF'
                       }}
                     </button>
+
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      (click)="downloadWithoutSignature(item)"
+                      [disabled]="downloadingId() !== null"
+                    >
+                      <i class="pi pi-file-export"></i>
+                      Sem assinatura
+                    </button>
                   </div>
                 </td>
               </tr>
+
+              @if (historyDocumentId() === item.id) {
+                <tr class="audit-row">
+                  <td colspan="5">
+                    <strong>Historico de auditoria</strong>
+
+                    @if (audit().length === 0) {
+                      <p>Nenhum evento de auditoria encontrado.</p>
+                    } @else {
+                      <div class="audit-list">
+                        @for (event of audit(); track event.id) {
+                          <div class="audit-item">
+                            <span>
+                              {{ event.action }} · v{{ event.version }}
+                            </span>
+                            <small>
+                              {{ event.actorName }}
+                              @if (event.comment) {
+                                — {{ event.comment }}
+                              }
+                            </small>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </td>
+                </tr>
+              }
             }
           </tbody>
         </table>
@@ -445,4 +922,99 @@
       Todas as exportações recuperam a versão salva no banco.
     </p>
   </section>
+}
+
+@if (signatureModalOpen()) {
+  <div
+    class="signature-backdrop"
+    role="presentation"
+    (click)="closeSignatureModal()"
+  >
+    <section
+      class="signature-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="signatureTitle"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">ASSINATURA ELETRÔNICA DO PSYCARE</p>
+          <h2 id="signatureTitle">Assine o documento</h2>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          (click)="closeSignatureModal()"
+          [disabled]="workflowId() !== null"
+        >
+          <i class="pi pi-times"></i>
+          Fechar
+        </button>
+      </div>
+
+      <p class="signature-document-title">
+        {{ signatureDocument()?.title }}
+      </p>
+
+      <p class="signature-modal-help">
+        Desenhe sua assinatura no espaço abaixo usando o mouse ou o toque.
+        Ela será registrada com o documento e incluída no PDF.
+      </p>
+
+      <div class="signature-pad-wrapper">
+        <canvas
+          #signatureCanvas
+          class="signature-pad"
+          aria-label="Área para desenhar a assinatura"
+          (pointerdown)="startSignature($event)"
+          (pointermove)="drawSignature($event)"
+          (pointerup)="endSignature()"
+          (pointerleave)="endSignature()"
+          (pointercancel)="endSignature()"
+        ></canvas>
+        <span>Assine acima</span>
+      </div>
+
+      <div class="signature-modal-notice">
+        <i class="pi pi-info-circle"></i>
+        Esta é uma assinatura desenhada pelo usuário. Para uma assinatura
+        Gov.br ou ICP-Brasil, utilize o fluxo externo correspondente.
+      </div>
+
+      <footer class="signature-modal-actions">
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          (click)="clearSignature()"
+          [disabled]="workflowId() !== null"
+        >
+          <i class="pi pi-eraser"></i>
+          Limpar
+        </button>
+
+        <div>
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            (click)="closeSignatureModal()"
+            [disabled]="workflowId() !== null"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="confirmDrawnSignature()"
+            [disabled]="workflowId() !== null || !signatureHasInk()"
+          >
+            <i class="pi pi-check"></i>
+            {{ workflowId() ? 'Salvando...' : 'Confirmar assinatura' }}
+          </button>
+        </div>
+      </footer>
+    </section>
+  </div>
 }

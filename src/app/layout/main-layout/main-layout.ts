@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   inject,
+  OnInit,
   signal
 } from '@angular/core';
 
@@ -30,13 +31,19 @@ import { MemberService }
   templateUrl: './main-layout.html',
   styleUrl: './main-layout.scss'
 })
-export class MainLayout {
+export class MainLayout implements OnInit {
   readonly authService = inject(AuthService);
   readonly memberService = inject(MemberService);
 
   private readonly router = inject(Router);
 
   readonly dark = signal(false);
+
+  ngOnInit(): void {
+    const savedTheme = localStorage.getItem('psycare-theme');
+    this.dark.set(savedTheme === 'dark');
+    this.applyTheme();
+  }
 
   readonly isAdmin = computed(() =>
     this.memberService.currentMember()?.role === 'admin'
@@ -76,7 +83,14 @@ export class MainLayout {
 
   toggleTheme(): void {
     this.dark.update(value => !value);
+    this.applyTheme();
+    localStorage.setItem(
+      'psycare-theme',
+      this.dark() ? 'dark' : 'light'
+    );
+  }
 
+  private applyTheme(): void {
     document.documentElement.classList.toggle(
       'app-dark',
       this.dark()

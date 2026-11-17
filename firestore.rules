@@ -1,0 +1,1425 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(clinicId) {
+      return /databases/$(database)/documents/clinics/$(clinicId)/members/$(request.auth.uid);
+    }
+
+    function patientPath(clinicId, patientId) {
+      return /databases/$(database)/documents/clinics/$(clinicId)/patients/$(patientId);
+    }
+
+    function professionalPath(clinicId, professionalId) {
+      return /databases/$(database)/documents/clinics/$(clinicId)/professionals/$(professionalId);
+    }
+
+    function appointmentPath(clinicId, appointmentId) {
+      return /databases/$(database)/documents/clinics/$(clinicId)/appointments/$(appointmentId);
+    }
+
+    function slotPath(clinicId, slotId) {
+      return /databases/$(database)/documents/clinics/$(clinicId)/bookedSlots/$(slotId);
+    }
+
+    function activeMember(clinicId) {
+      return signedIn()
+        && exists(memberPath(clinicId))
+        && get(memberPath(clinicId)).data.active == true;
+    }
+
+    function hasRole(clinicId, roles) {
+      return activeMember(clinicId)
+        && get(memberPath(clinicId)).data.role in roles;
+    }
+
+    function isAdmin(clinicId) {
+      return hasRole(clinicId, ['admin']);
+    }
+
+    function administrative(clinicId) {
+      return hasRole(clinicId, ['admin', 'receptionist']);
+    }
+
+    function myProfessionalId(clinicId) {
+      return get(memberPath(clinicId))
+        .data.get('professionalId', '');
+    }
+
+    function isAssignedPsychologist(clinicId, patientId) {
+      return hasRole(clinicId, ['psychologist'])
+        && myProfessionalId(clinicId) != ''
+        && exists(patientPath(clinicId, patientId))
+        && get(patientPath(clinicId, patientId))
+          .data.professionalId == myProfessionalId(clinicId);
+    }
+
+    function canReadClinical(
+      clinicId, patientId, authorUid
+    ) {
+      return isAdmin(clinicId)
+        || (
+          isAssignedPsychologist(clinicId, patientId)
+          && authorUid == request.auth.uid
+        );
+    }
+
+    function canCreateClinical(clinicId, patientId) {
+      return exists(patientPath(clinicId, patientId))
+        && get(patientPath(clinicId, patientId))
+          .data.active == true
+        && (
+          isAdmin(clinicId)
+          || isAssignedPsychologist(clinicId, patientId)
+        );
+    }
+
+    function activeProfessional(clinicId, professionalId) {
+      return exists(professionalPath(clinicId, professionalId))
+        && get(professionalPath(clinicId, professionalId))
+          .data.active == true;
+    }
+
+    function validDate(value) {
+      return value is string
+        && value.matches(
+          '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        );
+    }
+
+    function validProfessional(data) {
+      return data.keys().hasAll([
+          'fullName', 'crp', 'email', 'phone',
+          'specialties', 'active',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'fullName', 'crp', 'email', 'phone',
+          'specialties', 'active',
+          'createdAt', 'updatedAt'
+        ])
+        && data.fullName is string
+        && data.fullName.size() >= 3
+        && data.fullName.size() <= 120
+        && data.crp is string
+        && data.crp.size() >= 3
+        && data.crp.size() <= 30
+        && data.email is string
+        && data.email.size() <= 160
+        && data.phone is string
+        && data.phone.size() <= 30
+        && data.specialties is list
+        && data.specialties.size() <= 12
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validPatient(data) {
+      return data.keys().hasAll([
+          'fullName', 'birthDate', 'cpf', 'phone',
+          'email', 'contactName', 'contactPhone',
+          'professionalId', 'active', 'createdBy',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'fullName', 'birthDate', 'cpf', 'phone',
+          'email', 'contactName', 'contactPhone',
+          'professionalId', 'active', 'createdBy',
+          'createdAt', 'updatedAt'
+        ])
+        && data.fullName is string
+        && data.fullName.size() >= 3
+        && data.fullName.size() <= 120
+        && validDate(data.birthDate)
+        && data.cpf is string
+        && data.cpf.matches('^$|^[0-9]{11}$')
+        && data.phone is string
+        && data.phone.size() <= 30
+        && data.email is string
+        && data.email.size() <= 160
+        && (
+          data.phone.size() > 0
+          || data.email.size() > 0
+        )
+        && data.contactName is string
+        && data.contactName.size() <= 120
+        && data.contactPhone is string
+        && data.contactPhone.size() <= 30
+        && (
+          data.contactPhone.size() == 0
+          || data.contactName.size() > 0
+        )
+        && data.professionalId is string
+        && data.professionalId.size() > 0
+        && data.professionalId.size() <= 200
+        && data.active is bool
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validAppointment(data) {
+      return data.keys().hasAll([
+          'patientId', 'professionalId', 'date',
+          'startTime', 'slotId', 'status', 'createdBy',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'patientId', 'professionalId', 'date',
+          'startTime', 'slotId', 'status', 'createdBy',
+          'createdAt', 'updatedAt'
+        ])
+        && data.patientId is string
+        && data.patientId.size() > 0
+        && data.patientId.size() <= 200
+        && data.professionalId is string
+        && data.professionalId.size() > 0
+        && data.professionalId.size() <= 200
+        && validDate(data.date)
+        && data.startTime is string
+        && data.startTime.matches(
+          '^(08|09|10|11|12|13|14|15|16|17):00$'
+        )
+        && data.slotId is string
+        && data.slotId ==
+          data.professionalId + '_' +
+          data.date + '_' + data.startTime
+        && data.status in [
+          'scheduled', 'confirmed', 'completed',
+          'no_show', 'cancelled'
+        ]
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function validSlot(data, slotId) {
+      return data.keys().hasAll([
+          'appointmentId', 'professionalId', 'date',
+          'startTime', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'appointmentId', 'professionalId', 'date',
+          'startTime', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.appointmentId is string
+        && data.appointmentId.size() > 0
+        && data.professionalId is string
+        && validDate(data.date)
+        && data.startTime is string
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && slotId ==
+          data.professionalId + '_' +
+          data.date + '_' + data.startTime;
+    }
+
+    function activePatientFor(clinicId, data) {
+      return exists(patientPath(clinicId, data.patientId))
+        && get(patientPath(clinicId, data.patientId))
+          .data.active == true
+        && get(patientPath(clinicId, data.patientId))
+          .data.professionalId == data.professionalId;
+    }
+
+    function slotMatchesAppointment(
+      clinicId, appointmentId, data, active
+    ) {
+      return getAfter(slotPath(clinicId, data.slotId))
+          .data.appointmentId == appointmentId
+        && getAfter(slotPath(clinicId, data.slotId))
+          .data.active == active;
+    }
+
+    function appointmentMatchesSlot(
+      clinicId, slotId, data
+    ) {
+      return getAfter(
+          appointmentPath(clinicId, data.appointmentId)
+        ).data.slotId == slotId
+        && getAfter(
+          appointmentPath(clinicId, data.appointmentId)
+        ).data.professionalId == data.professionalId
+        && getAfter(
+          appointmentPath(clinicId, data.appointmentId)
+        ).data.date == data.date
+        && getAfter(
+          appointmentPath(clinicId, data.appointmentId)
+        ).data.startTime == data.startTime
+        && getAfter(
+          appointmentPath(clinicId, data.appointmentId)
+        ).data.status in ['scheduled', 'confirmed'];
+    }
+
+    function validClinicalRecord(data) {
+      return data.keys().hasAll([
+          'sessionDate', 'summary', 'objectives',
+          'authorUid', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'sessionDate', 'summary', 'objectives',
+          'authorUid', 'createdAt'
+        ])
+        && validDate(data.sessionDate)
+        && data.summary is string
+        && data.summary.size() >= 10
+        && data.summary.size() <= 4000
+        && data.objectives is string
+        && data.objectives.size() <= 1000
+        && data.authorUid is string
+        && data.createdAt is timestamp;
+    }
+
+    function validAssessment(data) {
+      return data.keys().hasAll([
+          'assessmentDate', 'type', 'objective',
+          'method', 'observations', 'conclusion',
+          'authorUid', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'assessmentDate', 'type', 'objective',
+          'method', 'observations', 'conclusion',
+          'authorUid', 'createdAt'
+        ])
+        && validDate(data.assessmentDate)
+        && data.type in ['initial', 'follow_up', 'other']
+        && data.objective is string
+        && data.objective.size() >= 5
+        && data.objective.size() <= 1000
+        && data.method is string
+        && data.method.size() <= 1000
+        && data.observations is string
+        && data.observations.size() <= 4000
+        && data.conclusion is string
+        && data.conclusion.size() <= 2000
+        && data.authorUid is string
+        && data.createdAt is timestamp;
+    }
+
+    function validDiagnosis(data) {
+      return data.keys().hasAll([
+          'code', 'description', 'classification',
+          'assessment', 'assessmentDate',
+          'authorUid', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'code', 'description', 'classification',
+          'assessment', 'assessmentDate',
+          'authorUid', 'createdAt'
+        ])
+        && data.code is string
+        && data.code.matches(
+          '^[A-Z][0-9]{2}([.][0-9A-Z]{1,4})?$'
+        )
+        && data.description is string
+        && data.description.size() > 0
+        && data.description.size() <= 200
+        && data.classification == 'CID-10'
+        && data.assessment in ['hypothesis', 'confirmed']
+        && validDate(data.assessmentDate)
+        && data.authorUid is string
+        && data.createdAt is timestamp;
+    }
+
+    // MEMBROS
+    match /clinics/{clinicId}/members/{memberId} {
+      allow get: if signedIn() && (
+        request.auth.uid == memberId
+        || isAdmin(clinicId)
+      );
+
+      allow list: if isAdmin(clinicId)
+        && request.query.limit <= 100;
+
+      allow create: if isAdmin(clinicId)
+        && memberId != request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'name', 'role', 'active'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'name', 'role', 'active', 'professionalId'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.role in [
+          'psychologist', 'receptionist'
+        ]
+        && request.resource.data.active is bool
+        && request.resource.data.get('professionalId', '') is string;
+
+      allow update: if isAdmin(clinicId)
+        && memberId != request.auth.uid
+        && resource.data.role in [
+          'psychologist', 'receptionist'
+        ]
+        && request.resource.data.role in [
+          'psychologist', 'receptionist'
+        ]
+        && request.resource.data.active is bool
+        && request.resource.data.get('professionalId', '') is string
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'name', 'role', 'active', 'professionalId'
+          ]);
+
+      allow delete: if isAdmin(clinicId)
+        && memberId != request.auth.uid
+        && resource.data.role in [
+          'psychologist', 'receptionist'
+        ];
+    }
+
+    // PROFISSIONAIS
+    match /clinics/{clinicId}/professionals/{professionalId} {
+      allow get: if administrative(clinicId)
+        || (
+          hasRole(clinicId, ['psychologist'])
+          && myProfessionalId(clinicId) == professionalId
+        );
+
+      allow list: if administrative(clinicId)
+        && request.query.limit <= 100;
+
+      allow create: if isAdmin(clinicId)
+        && validProfessional(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isAdmin(clinicId)
+        && validProfessional(request.resource.data)
+        && request.resource.data.createdAt
+          == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'fullName', 'crp', 'email', 'phone',
+            'specialties', 'active', 'updatedAt'
+          ]);
+
+      allow delete: if false;
+    }
+
+    // PACIENTES
+    match /clinics/{clinicId}/patients/{patientId} {
+      allow get: if administrative(clinicId)
+        || (
+          hasRole(clinicId, ['psychologist'])
+          && myProfessionalId(clinicId) != ''
+          && resource.data.professionalId
+            == myProfessionalId(clinicId)
+        );
+
+      allow list: if request.query.limit <= 100
+        && (
+          administrative(clinicId)
+          || (
+            hasRole(clinicId, ['psychologist'])
+            && myProfessionalId(clinicId) != ''
+            && resource.data.professionalId
+              == myProfessionalId(clinicId)
+          )
+        );
+
+      allow create: if administrative(clinicId)
+        && validPatient(request.resource.data)
+        && activeProfessional(
+          clinicId, request.resource.data.professionalId
+        )
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if administrative(clinicId)
+        && validPatient(request.resource.data)
+        && request.resource.data.createdBy
+          == resource.data.createdBy
+        && request.resource.data.createdAt
+          == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && (
+          request.resource.data.professionalId
+            == resource.data.professionalId
+          || (
+            isAdmin(clinicId)
+            && activeProfessional(
+              clinicId,
+              request.resource.data.professionalId
+            )
+          )
+        )
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'fullName', 'birthDate', 'cpf', 'phone',
+            'email', 'contactName', 'contactPhone',
+            'professionalId', 'active', 'updatedAt'
+          ]);
+
+      allow delete: if false;
+    }
+
+    // AGENDAMENTOS
+    match /clinics/{clinicId}/appointments/{appointmentId} {
+      allow get: if administrative(clinicId);
+
+      allow list: if administrative(clinicId)
+        && request.query.limit <= 500;
+
+      allow create: if administrative(clinicId)
+        && validAppointment(request.resource.data)
+        && request.resource.data.status == 'scheduled'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && activeProfessional(
+          clinicId, request.resource.data.professionalId
+        )
+        && activePatientFor(clinicId, request.resource.data)
+        && slotMatchesAppointment(
+          clinicId,
+          appointmentId,
+          request.resource.data,
+          true
+        );
+
+      allow update: if administrative(clinicId)
+        && validAppointment(request.resource.data)
+        && request.resource.data.patientId
+          == resource.data.patientId
+        && request.resource.data.professionalId
+          == resource.data.professionalId
+        && request.resource.data.createdBy
+          == resource.data.createdBy
+        && request.resource.data.createdAt
+          == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && (
+          (
+            request.resource.data.date == resource.data.date
+            && request.resource.data.startTime
+              == resource.data.startTime
+            && request.resource.data.slotId
+              == resource.data.slotId
+            && request.resource.data
+              .diff(resource.data)
+              .affectedKeys()
+              .hasOnly(['status', 'updatedAt'])
+            && (
+              (
+                resource.data.status == 'scheduled'
+                && request.resource.data.status in [
+                  'confirmed', 'cancelled'
+                ]
+              )
+              ||
+              (
+                resource.data.status == 'confirmed'
+                && request.resource.data.status in [
+                  'completed', 'no_show', 'cancelled'
+                ]
+              )
+            )
+            && slotMatchesAppointment(
+              clinicId,
+              appointmentId,
+              request.resource.data,
+              request.resource.data.status != 'cancelled'
+            )
+          )
+          ||
+          (
+            resource.data.status in [
+              'scheduled', 'confirmed'
+            ]
+            && request.resource.data.status == 'scheduled'
+            && request.resource.data.slotId
+              != resource.data.slotId
+            && request.resource.data
+              .diff(resource.data)
+              .affectedKeys()
+              .hasOnly([
+                'date', 'startTime', 'slotId',
+                'status', 'updatedAt'
+              ])
+            && slotMatchesAppointment(
+              clinicId, appointmentId, resource.data, false
+            )
+            && slotMatchesAppointment(
+              clinicId,
+              appointmentId,
+              request.resource.data,
+              true
+            )
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // RESERVAS DE HORÁRIOS
+    match /clinics/{clinicId}/bookedSlots/{slotId} {
+      allow get: if administrative(clinicId);
+      allow list: if false;
+
+      allow create: if administrative(clinicId)
+        && validSlot(request.resource.data, slotId)
+        && request.resource.data.active == true
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && appointmentMatchesSlot(
+          clinicId, slotId, request.resource.data
+        );
+
+      allow update: if administrative(clinicId)
+        && validSlot(request.resource.data, slotId)
+        && request.resource.data.createdAt
+          == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.professionalId
+          == resource.data.professionalId
+        && request.resource.data.date
+          == resource.data.date
+        && request.resource.data.startTime
+          == resource.data.startTime
+        && (
+          (
+            resource.data.active == false
+            && request.resource.data.active == true
+            && request.resource.data
+              .diff(resource.data)
+              .affectedKeys()
+              .hasOnly([
+                'appointmentId', 'active', 'updatedAt'
+              ])
+            && appointmentMatchesSlot(
+              clinicId, slotId, request.resource.data
+            )
+          )
+          ||
+          (
+            resource.data.active == true
+            && request.resource.data.active == false
+            && request.resource.data.appointmentId
+              == resource.data.appointmentId
+            && request.resource.data
+              .diff(resource.data)
+              .affectedKeys()
+              .hasOnly(['active', 'updatedAt'])
+            && (
+              getAfter(
+                appointmentPath(
+                  clinicId, resource.data.appointmentId
+                )
+              ).data.status == 'cancelled'
+              ||
+              getAfter(
+                appointmentPath(
+                  clinicId, resource.data.appointmentId
+                )
+              ).data.slotId != slotId
+            )
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // EVOLUÇÕES PSICOLÓGICAS
+    match /clinics/{clinicId}/patients/{patientId}/clinicalRecords/{recordId} {
+
+      allow get: if canReadClinical(
+        clinicId,
+        patientId,
+        resource.data.authorUid
+      );
+
+      allow list: if request.query.limit <= 100
+        && canReadClinical(
+          clinicId,
+          patientId,
+          resource.data.authorUid
+        );
+
+      allow create: if canCreateClinical(clinicId, patientId)
+        && validClinicalRecord(request.resource.data)
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+
+      allow update, delete: if false;
+    }
+
+    // AVALIAÇÕES PSICOLÓGICAS
+    match /clinics/{clinicId}/patients/{patientId}/assessments/{assessmentId} {
+
+      allow get: if canReadClinical(
+        clinicId,
+        patientId,
+        resource.data.authorUid
+      );
+
+      allow list: if request.query.limit <= 100
+        && canReadClinical(
+          clinicId,
+          patientId,
+          resource.data.authorUid
+        );
+
+      allow create: if canCreateClinical(clinicId, patientId)
+        && validAssessment(request.resource.data)
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+
+      allow update, delete: if false;
+    }
+
+    // DIAGNÓSTICOS CID-10
+    match /clinics/{clinicId}/patients/{patientId}/diagnoses/{diagnosisId} {
+
+      allow get: if canReadClinical(
+        clinicId,
+        patientId,
+        resource.data.authorUid
+      );
+
+      allow list: if request.query.limit <= 100
+        && canReadClinical(
+          clinicId,
+          patientId,
+          resource.data.authorUid
+        );
+
+      allow create: if canCreateClinical(clinicId, patientId)
+        && validDiagnosis(request.resource.data)
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+
+      allow update, delete: if false;
+    }
+
+    // QUALQUER OUTRA COLEÇÃO PERMANECE BLOQUEADA
+    // FINANCEIRO: cobranças de cada paciente.
+    match /clinics/{clinicId}/patients/{patientId}/receivables/{chargeId} {
+
+      function financeAllowed() {
+        return isAdmin(clinicId)
+          || isAssignedPsychologist(clinicId, patientId);
+      }
+
+      function chargePath() {
+        return /databases/$(database)/documents/clinics/$(clinicId)/patients/$(patientId)/receivables/$(chargeId);
+      }
+
+      function paymentPath(paymentId) {
+        return /databases/$(database)/documents/clinics/$(clinicId)/patients/$(patientId)/receivables/$(chargeId)/payments/$(paymentId);
+      }
+
+      function editPath(editId) {
+        return /databases/$(database)/documents/clinics/$(clinicId)/patients/$(patientId)/receivables/$(chargeId)/paymentEdits/$(editId);
+      }
+
+      function financialStatus(amount, paid) {
+        return paid == 0
+          ? 'open'
+          : (
+              paid == amount
+                ? 'paid'
+                : 'partial'
+            );
+      }
+
+      function validCharge(data) {
+        return data.keys().hasAll([
+          'description', 'amountCents', 'paidCents',
+          'dueDate', 'status', 'lastPaymentId',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'description', 'amountCents', 'paidCents',
+          'dueDate', 'status', 'lastPaymentId',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.description is string
+        && data.description.size() >= 3
+        && data.description.size() <= 150
+        && data.amountCents is int
+        && data.amountCents >= 1
+        && data.amountCents <= 10000000
+        && data.paidCents is int
+        && data.paidCents >= 0
+        && data.paidCents <= data.amountCents
+        && validDate(data.dueDate)
+        && data.status in [
+          'open', 'partial', 'paid', 'cancelled'
+        ]
+        && (
+          (
+            data.status == 'cancelled'
+            && data.paidCents == 0
+          )
+          || data.status == financialStatus(
+            data.amountCents,
+            data.paidCents
+          )
+        )
+        && data.lastPaymentId is string
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+      }
+
+      function validPayment(data) {
+        return data.keys().hasAll([
+          'amountCents', 'method', 'note',
+          'recordedBy', 'recordedAt', 'editedBy',
+          'updatedAt', 'revisionId'
+        ])
+        && data.keys().hasOnly([
+          'amountCents', 'method', 'note',
+          'recordedBy', 'recordedAt', 'editedBy',
+          'updatedAt', 'revisionId'
+        ])
+        && data.amountCents is int
+        && data.amountCents >= 1
+        && data.amountCents <= 10000000
+        && data.method in [
+          'pix', 'cash', 'card', 'transfer'
+        ]
+        && data.note is string
+        && data.note.size() <= 200
+        && data.recordedBy is string
+        && data.recordedAt is timestamp
+        && data.editedBy is string
+        && data.updatedAt is timestamp
+        && data.revisionId is string;
+      }
+
+      function validPaymentEdit(data) {
+        return data.keys().hasAll([
+          'paymentId', 'previousAmountCents',
+          'newAmountCents', 'previousMethod',
+          'newMethod', 'previousNote', 'newNote',
+          'changedBy', 'changedAt'
+        ])
+        && data.keys().hasOnly([
+          'paymentId', 'previousAmountCents',
+          'newAmountCents', 'previousMethod',
+          'newMethod', 'previousNote', 'newNote',
+          'changedBy', 'changedAt'
+        ])
+        && data.paymentId is string
+        && data.paymentId.size() > 0
+        && data.previousAmountCents is int
+        && data.previousAmountCents >= 1
+        && data.newAmountCents is int
+        && data.newAmountCents >= 1
+        && data.newAmountCents <= 10000000
+        && data.previousMethod in [
+          'pix', 'cash', 'card', 'transfer'
+        ]
+        && data.newMethod in [
+          'pix', 'cash', 'card', 'transfer'
+        ]
+        && data.previousNote is string
+        && data.previousNote.size() <= 200
+        && data.newNote is string
+        && data.newNote.size() <= 200
+        && data.changedBy is string
+        && data.changedAt is timestamp;
+      }
+
+      function validFinancialMutation() {
+        let before = resource.data;
+        let after = request.resource.data;
+        let path = paymentPath(after.lastPaymentId);
+
+        return after.lastPaymentId.size() > 0
+          && getAfter(path).data.updatedAt == request.time
+          && (
+            (
+              !exists(path)
+              && getAfter(path).data.recordedAt == request.time
+              && after.paidCents == before.paidCents
+                + getAfter(path).data.amountCents
+            )
+            ||
+            (
+              exists(path)
+              && getAfter(path).data.revisionId
+                != get(path).data.revisionId
+              && after.paidCents == before.paidCents
+                + getAfter(path).data.amountCents
+                - get(path).data.amountCents
+            )
+          );
+      }
+
+      allow get: if financeAllowed();
+
+      allow list: if financeAllowed()
+        && request.query.limit <= 100;
+
+      allow create: if financeAllowed()
+        && get(
+          /databases/$(database)/documents/clinics/$(clinicId)/patients/$(patientId)
+        ).data.active == true
+        && validCharge(request.resource.data)
+        && request.resource.data.paidCents == 0
+        && request.resource.data.status == 'open'
+        && request.resource.data.lastPaymentId == ''
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if financeAllowed()
+        && validCharge(request.resource.data)
+        && request.resource.data.description
+          == resource.data.description
+        && request.resource.data.amountCents
+          == resource.data.amountCents
+        && request.resource.data.dueDate
+          == resource.data.dueDate
+        && request.resource.data.createdBy
+          == resource.data.createdBy
+        && request.resource.data.createdAt
+          == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && (
+          (
+            resource.data.status == 'open'
+            && resource.data.paidCents == 0
+            && request.resource.data.status == 'cancelled'
+            && request.resource.data.lastPaymentId
+              == resource.data.lastPaymentId
+            && request.resource.data.diff(resource.data)
+              .affectedKeys()
+              .hasOnly(['status', 'updatedAt'])
+          )
+          ||
+          (
+            resource.data.status != 'cancelled'
+            && request.resource.data.status != 'cancelled'
+            && request.resource.data.diff(resource.data)
+              .affectedKeys()
+              .hasOnly([
+                'paidCents', 'status',
+                'lastPaymentId', 'updatedAt'
+              ])
+            && validFinancialMutation()
+          )
+        );
+
+      allow delete: if false;
+
+      match /payments/{paymentId} {
+
+        allow get: if financeAllowed();
+
+        allow list: if financeAllowed()
+          && request.query.limit <= 100;
+
+        allow create: if financeAllowed()
+          && validPayment(request.resource.data)
+          && request.resource.data.recordedBy
+            == request.auth.uid
+          && request.resource.data.editedBy
+            == request.auth.uid
+          && request.resource.data.recordedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.revisionId == ''
+          && get(chargePath()).data.status in [
+            'open', 'partial'
+          ]
+          && getAfter(chargePath()).data.lastPaymentId == paymentId
+          && getAfter(chargePath()).data.updatedAt == request.time
+          && getAfter(chargePath()).data.paidCents
+            == get(chargePath()).data.paidCents
+              + request.resource.data.amountCents;
+
+        allow update: if financeAllowed()
+          && validPayment(request.resource.data)
+          && request.resource.data.recordedBy
+            == resource.data.recordedBy
+          && request.resource.data.recordedAt
+            == resource.data.recordedAt
+          && request.resource.data.editedBy == request.auth.uid
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.revisionId
+            != resource.data.revisionId
+          && request.resource.data.revisionId.size() > 0
+          && request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly([
+              'amountCents', 'method', 'note',
+              'editedBy', 'updatedAt', 'revisionId'
+            ])
+          && !exists(editPath(request.resource.data.revisionId))
+          && getAfter(editPath(request.resource.data.revisionId))
+            .data.paymentId == paymentId
+          && getAfter(editPath(request.resource.data.revisionId))
+            .data.changedAt == request.time
+          && getAfter(chargePath()).data.lastPaymentId == paymentId
+          && getAfter(chargePath()).data.updatedAt == request.time
+          && getAfter(chargePath()).data.paidCents
+            == get(chargePath()).data.paidCents
+              + request.resource.data.amountCents
+              - resource.data.amountCents;
+
+        allow delete: if false;
+      }
+
+      match /paymentEdits/{editId} {
+
+        allow get: if financeAllowed();
+
+        allow list: if financeAllowed()
+          && request.query.limit <= 100;
+
+        allow create: if financeAllowed()
+          && validPaymentEdit(request.resource.data)
+          && request.resource.data.changedBy == request.auth.uid
+          && request.resource.data.changedAt == request.time
+          && exists(paymentPath(request.resource.data.paymentId))
+          && getAfter(paymentPath(request.resource.data.paymentId))
+            .data.revisionId == editId
+          && getAfter(paymentPath(request.resource.data.paymentId))
+            .data.updatedAt == request.time
+          && request.resource.data.previousAmountCents
+            == get(paymentPath(request.resource.data.paymentId))
+              .data.amountCents
+          && request.resource.data.newAmountCents
+            == getAfter(paymentPath(request.resource.data.paymentId))
+              .data.amountCents
+          && request.resource.data.previousMethod
+            == get(paymentPath(request.resource.data.paymentId))
+              .data.method
+          && request.resource.data.newMethod
+            == getAfter(paymentPath(request.resource.data.paymentId))
+              .data.method
+          && request.resource.data.previousNote
+            == get(paymentPath(request.resource.data.paymentId))
+              .data.note
+          && request.resource.data.newNote
+            == getAfter(paymentPath(request.resource.data.paymentId))
+              .data.note;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // DOCUMENTOS PSICOLOGICOS
+    match /clinics/{clinicId}/patients/{patientId}/documents/{documentId} {
+
+      function documentPath() {
+        return /databases/$(database)/documents/clinics/$(clinicId)/patients/$(patientId)/documents/$(documentId);
+      }
+
+      function versionPath(versionId) {
+        return /databases/$(database)/documents/clinics/$(clinicId)/patients/$(patientId)/documents/$(documentId)/versions/$(versionId);
+      }
+
+      function auditPath(auditId) {
+        return /databases/$(database)/documents/clinics/$(clinicId)/patients/$(patientId)/documents/$(documentId)/audit/$(auditId);
+      }
+
+      function canReadDocument(data) {
+        return isAdmin(clinicId)
+          || (
+            isAssignedPsychologist(clinicId, patientId)
+            && data.professionalId == myProfessionalId(clinicId)
+          );
+      }
+
+      function validDocumentDetails(data) {
+        return data.details is map
+          && data.details.keys().hasOnly([
+            'purpose', 'requestedBy', 'attendancePeriod',
+            'demand', 'procedure', 'analysis', 'conclusion',
+            'recommendations', 'professionalsInvolved',
+            'methods', 'results', 'question', 'foundation',
+            'destination', 'referralReason', 'diagnosis',
+            'evidence'
+          ])
+          && data.details.get('purpose', '') is string
+          && data.details.get('requestedBy', '') is string
+          && data.details.get('attendancePeriod', '') is string
+          && data.details.get('demand', '') is string
+          && data.details.get('procedure', '') is string
+          && data.details.get('analysis', '') is string
+          && data.details.get('conclusion', '') is string
+          && data.details.get('recommendations', '') is string
+          && data.details.get('professionalsInvolved', '') is string
+          && data.details.get('methods', '') is string
+          && data.details.get('results', '') is string
+          && data.details.get('question', '') is string
+          && data.details.get('foundation', '') is string
+          && data.details.get('destination', '') is string
+          && data.details.get('referralReason', '') is string
+          && data.details.get('diagnosis', '') is string
+          && data.details.get('evidence', '') is string
+          && (
+            (data.type == 'declaration'
+              && data.details.get('purpose', '').size() >= 3)
+            ||
+            (data.type == 'certificate'
+              && data.details.get('purpose', '').size() >= 3
+              && data.details.get('attendancePeriod', '').size() >= 3)
+            ||
+            (data.type == 'report'
+              && data.details.get('demand', '').size() >= 3
+              && data.details.get('procedure', '').size() >= 3
+              && data.details.get('analysis', '').size() >= 3
+              && data.details.get('conclusion', '').size() >= 3
+              && data.details.get('recommendations', '').size() >= 3)
+            ||
+            (data.type == 'multi_report'
+              && data.details.get('demand', '').size() >= 3
+              && data.details.get('professionalsInvolved', '').size() >= 3
+              && data.details.get('procedure', '').size() >= 3
+              && data.details.get('analysis', '').size() >= 3
+              && data.details.get('conclusion', '').size() >= 3)
+            ||
+            (data.type == 'evaluation_report'
+              && data.details.get('demand', '').size() >= 3
+              && data.details.get('methods', '').size() >= 3
+              && data.details.get('results', '').size() >= 3
+              && data.details.get('analysis', '').size() >= 3
+              && data.details.get('conclusion', '').size() >= 3
+              && data.details.get('recommendations', '').size() >= 3)
+            ||
+            (data.type == 'opinion'
+              && data.details.get('question', '').size() >= 3
+              && data.details.get('foundation', '').size() >= 3
+              && data.details.get('conclusion', '').size() >= 3)
+            ||
+            (data.type == 'referral'
+              && data.details.get('destination', '').size() >= 3
+              && data.details.get('referralReason', '').size() >= 3
+              && data.details.get('recommendations', '').size() >= 3)
+            ||
+            (data.type == 'diagnosis'
+              && data.details.get('diagnosis', '').size() >= 3
+              && data.details.get('evidence', '').size() >= 3
+              && data.details.get('recommendations', '').size() >= 3)
+            ||
+            (data.type == 'other'
+              && data.details.get('purpose', '').size() >= 3
+              && data.details.get('conclusion', '').size() >= 3)
+          );
+      }
+
+      function validSignature(data) {
+        return data.signature is map
+          && data.signature.keys().hasAll([
+            'method', 'signerUid', 'signerName', 'signerCrp',
+            'signedAt', 'contentHash', 'externalReference'
+          ])
+          && data.signature.keys().hasOnly([
+            'method', 'signerUid', 'signerName', 'signerCrp',
+            'signedAt', 'contentHash', 'externalReference',
+            'signatureImageDataUrl', 'signatureImagePath',
+            'signatureImageUrl'
+          ])
+          && data.signature.method in [
+            'drawn', 'govbr_advanced', 'icp_brasil_qualified'
+          ]
+          && data.signature.signerUid == request.auth.uid
+          && data.signature.signerName is string
+          && data.signature.signerCrp is string
+          && data.signature.signedAt is timestamp
+          && data.signature.contentHash is string
+          && data.signature.contentHash.size() == 64
+          && data.signature.externalReference is string
+          && data.signature.externalReference.size() >= 4
+          && (
+            data.signature.method != 'drawn'
+            || (
+              data.signature.signatureImageDataUrl is string
+              && data.signature.signatureImageDataUrl.size() > 0
+              && data.signature.signatureImageDataUrl.size() <= 600000
+            )
+          );
+      }
+
+      function validAdminDrawnSignature(data) {
+        return data.signature is map
+          && data.signature.method == 'drawn'
+          && data.signature.signerUid == request.auth.uid
+          && data.signature.signerName is string
+          && data.signature.signerCrp is string
+          && data.signature.signedAt is timestamp
+          && data.signature.contentHash is string
+          && data.signature.contentHash.size() == 64
+          && data.signature.externalReference is string
+          && data.signature.externalReference.size() >= 4
+          && data.signature.signatureImageDataUrl is string
+          && data.signature.signatureImageDataUrl.size() > 0
+          && data.signature.signatureImageDataUrl.size() <= 600000;
+      }
+
+      function hasMutationArtifacts(data) {
+        return data.versionId is string
+          && data.lastAuditId is string
+          && getAfter(versionPath(data.versionId)).data.version
+            == data.version
+          && getAfter(auditPath(data.lastAuditId)).data.version
+            == data.version
+          && getAfter(auditPath(data.lastAuditId)).data.actorUid
+            == request.auth.uid;
+      }
+
+      function validPsychologicalDocument(data) {
+        return data.keys().hasAll([
+          'type', 'title', 'content', 'documentDate',
+          'patientName', 'patientBirthDate', 'professionalId',
+          'professionalName', 'professionalCrp', 'status',
+          'createdBy', 'updatedBy', 'createdAt', 'updatedAt',
+          'details', 'version', 'versionId', 'lastAuditId'
+        ])
+        && data.keys().hasOnly([
+          'type', 'title', 'content', 'documentDate',
+          'patientName', 'patientBirthDate', 'professionalId',
+          'professionalName', 'professionalCrp', 'status',
+          'createdBy', 'updatedBy', 'createdAt', 'updatedAt',
+          'details', 'version', 'versionId', 'lastAuditId',
+          'reviewedBy', 'reviewedAt', 'reviewComment', 'signature'
+        ])
+        && data.type in [
+          'declaration', 'certificate', 'report',
+          'multi_report', 'evaluation_report', 'opinion',
+          'referral', 'diagnosis', 'other'
+        ]
+        && data.title is string
+        && data.title.size() >= 3
+        && data.title.size() <= 120
+        && data.content is string
+        && data.content.size() >= 10
+        && data.content.size() <= 20000
+        && validDate(data.documentDate)
+        && data.patientName is string
+        && data.patientName.size() >= 3
+        && data.patientName.size() <= 120
+        && validDate(data.patientBirthDate)
+        && data.professionalId is string
+        && data.professionalId.size() > 0
+        && data.professionalId.size() <= 200
+        && data.professionalName is string
+        && data.professionalName.size() >= 3
+        && data.professionalName.size() <= 120
+        && data.professionalCrp is string
+        && data.professionalCrp.size() >= 3
+        && data.professionalCrp.size() <= 30
+        && data.status in [
+          'draft', 'in_review', 'approved', 'rejected', 'signed'
+        ]
+        && (!data.keys().hasAny(['details'])
+          || validDocumentDetails(data))
+        && (!data.keys().hasAny(['version'])
+          || (data.version is int && data.version >= 1))
+        && (!data.keys().hasAny(['versionId'])
+          || data.versionId is string)
+        && (!data.keys().hasAny(['lastAuditId'])
+          || data.lastAuditId is string)
+        && (!data.keys().hasAny(['reviewedBy'])
+          || data.reviewedBy is string)
+        && (!data.keys().hasAny(['reviewedAt'])
+          || data.reviewedAt is timestamp)
+        && (!data.keys().hasAny(['reviewComment'])
+          || data.reviewComment is string)
+        && (!data.keys().hasAny(['signature'])
+          || validSignature(data))
+        && data.createdBy is string
+        && data.updatedBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+      }
+
+      function validReferences(data) {
+        return exists(patientPath(clinicId, patientId))
+          && get(patientPath(clinicId, patientId)).data.active == true
+          && get(patientPath(clinicId, patientId)).data.fullName
+            == data.patientName
+          && get(patientPath(clinicId, patientId)).data.birthDate
+            == data.patientBirthDate
+          && exists(professionalPath(clinicId, data.professionalId))
+          && get(professionalPath(clinicId, data.professionalId))
+            .data.active == true
+          && get(professionalPath(clinicId, data.professionalId))
+            .data.fullName == data.professionalName
+          && get(professionalPath(clinicId, data.professionalId))
+            .data.crp == data.professionalCrp;
+      }
+
+      allow get: if canReadDocument(resource.data);
+
+      allow list: if request.query.limit <= 100
+        && canReadDocument(resource.data);
+
+      allow create: if (
+          isAdmin(clinicId)
+          || (
+            isAssignedPsychologist(clinicId, patientId)
+            && request.resource.data.professionalId
+              == myProfessionalId(clinicId)
+          )
+        )
+        && validPsychologicalDocument(request.resource.data)
+        && validReferences(request.resource.data)
+        && request.resource.data.keys().hasAll([
+          'details', 'version', 'versionId', 'lastAuditId'
+        ])
+        && request.resource.data.version == 1
+        && request.resource.data.status == 'draft'
+        && hasMutationArtifacts(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if (
+          isAdmin(clinicId)
+          && resource.data.status in ['approved', 'signed']
+          && request.resource.data.status == 'signed'
+          && validAdminDrawnSignature(request.resource.data)
+          && request.resource.data.version
+            == resource.data.get('version', 0) + 1
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly([
+              'status', 'version', 'versionId', 'lastAuditId',
+              'updatedBy', 'updatedAt', 'signature'
+            ])
+        )
+        || (canReadDocument(resource.data)
+        && validPsychologicalDocument(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.professionalId
+          == resource.data.professionalId
+        && request.resource.data.patientName
+          == resource.data.patientName
+        && request.resource.data.patientBirthDate
+          == resource.data.patientBirthDate
+        && request.resource.data.version
+          == resource.data.get('version', 0) + 1
+        && request.resource.data.versionId is string
+        && request.resource.data.lastAuditId is string
+        && hasMutationArtifacts(request.resource.data)
+        && (
+          (
+            resource.data.status in ['draft', 'rejected']
+            && request.resource.data.status in [
+              'draft', 'in_review'
+            ]
+          )
+          || (
+            resource.data.status == 'in_review'
+            && request.resource.data.status in [
+              'approved', 'rejected'
+            ]
+          )
+          || (
+            resource.data.status == 'approved'
+            && request.resource.data.status == 'signed'
+            && request.resource.data.keys().hasAny(['signature'])
+            && validSignature(request.resource.data)
+          )
+          || (
+            resource.data.status == 'signed'
+            && request.resource.data.status == 'signed'
+            && request.resource.data.keys().hasAny(['signature'])
+            && validSignature(request.resource.data)
+          )
+        )
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'title', 'content', 'documentDate', 'details',
+            'status', 'version', 'versionId', 'lastAuditId',
+            'updatedBy', 'updatedAt', 'reviewedBy', 'reviewedAt',
+            'reviewComment', 'signature'
+          ]));
+
+      allow delete: if false;
+
+      match /versions/{versionId} {
+        allow get: if canReadDocument(get(documentPath()).data);
+
+        allow list: if request.query.limit <= 100
+          && canReadDocument(get(documentPath()).data);
+
+        allow create: if (
+            isAdmin(clinicId)
+            && request.resource.data.documentId == documentId
+            && request.resource.data.version is int
+            && request.resource.data.snapshot is map
+            && request.resource.data.createdBy == request.auth.uid
+            && request.resource.data.createdAt == request.time
+          )
+          || request.resource.data.documentId == documentId
+          && request.resource.data.version is int
+          && request.resource.data.snapshot is map
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && getAfter(documentPath()).data.version
+            == request.resource.data.version
+          && getAfter(documentPath()).data.versionId == versionId;
+
+        allow update, delete: if false;
+      }
+
+      match /audit/{auditId} {
+        allow get: if canReadDocument(
+          get(documentPath()).data
+        );
+
+        allow list: if request.query.limit <= 100
+          && canReadDocument(get(documentPath()).data);
+
+        allow create: if (
+            isAdmin(clinicId)
+            && request.resource.data.action == 'signed'
+            && request.resource.data.version is int
+            && request.resource.data.actorUid == request.auth.uid
+            && request.resource.data.actorName is string
+            && request.resource.data.comment is string
+            && request.resource.data.createdAt == request.time
+          )
+          || request.resource.data.action in [
+            'created', 'updated', 'submitted',
+            'approved', 'rejected', 'signed'
+          ]
+          && request.resource.data.version is int
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.actorName is string
+          && request.resource.data.comment is string
+          && request.resource.data.createdAt == request.time
+          && getAfter(documentPath()).data.version
+            == request.resource.data.version
+          && getAfter(documentPath()).data.lastAuditId == auditId;
+
+        allow update, delete: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -56,7 +56,11 @@ export class MemberService {
       uid,
       name: String(data['name'] ?? ''),
       role: data['role'] as UserRole,
-      active: true
+      active: true,
+      professionalId:
+        typeof data['professionalId'] === 'string'
+          ? data['professionalId']
+          : undefined
     };
 
     this.memberState.set(member);

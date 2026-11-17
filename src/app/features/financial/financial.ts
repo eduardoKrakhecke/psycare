@@ -2,9 +2,11 @@
 import {
   Component,
   computed,
+  ElementRef,
   inject,
   OnInit,
-  signal
+  signal,
+  ViewChild
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
@@ -21,8 +23,17 @@ import { ClinicalService }
 import { FinancialService }
   from '../../core/services/financial.service';
 
+import { PaymentReceiptPdfService }
+  from '../../core/services/payment-receipt-pdf.service';
+
+import { ProfessionalService }
+  from '../../core/services/professional.service';
+
 import type { Patient }
   from '../../core/models/patient.model';
+
+import type { Professional }
+  from '../../core/models/professional.model';
 
 import type {
   Charge,
@@ -59,10 +70,15 @@ export class Financial implements OnInit {
   private readonly patientService = inject(PatientService);
   private readonly clinicalService = inject(ClinicalService);
   private readonly financialService = inject(FinancialService);
+  private readonly receiptPdfService =
+    inject(PaymentReceiptPdfService);
+  private readonly professionalService =
+    inject(ProfessionalService);
 
   private historyVersion = 0;
 
   readonly patients = signal<Patient[]>([]);
+  readonly professionals = signal<Professional[]>([]);
   readonly charges = signal<Charge[]>([]);
   readonly payments = signal<Payment[]>([]);
   readonly edits = signal<PaymentEdit[]>([]);
@@ -74,6 +90,7 @@ export class Financial implements OnInit {
   readonly loading = signal(false);
   readonly loadingHistory = signal(false);
   readonly saving = signal(false);
+  readonly downloadingReceiptId = signal<string | null>(null);
 
   readonly error = signal('');
   readonly success = signal('');
@@ -81,9 +98,20 @@ export class Financial implements OnInit {
   readonly chargeFormOpen = signal(false);
   readonly paymentFormOpen = signal(false);
   readonly editingPayment = signal<Payment | null>(null);
+  readonly receiptSignatureOpen = signal(false);
+  readonly receiptSignaturePayment = signal<Payment | null>(null);
+  readonly receiptSignatureHasInk = signal(false);
 
   readonly paymentMethods = PAYMENT_METHODS;
   readonly today = localToday();
+
+  @ViewChild('receiptSignatureCanvas')
+  private receiptSignatureCanvas?:
+    ElementRef<HTMLCanvasElement>;
+
+  private receiptSignatureContext:
+    CanvasRenderingContext2D | null = null;
+  private receiptSignatureDrawing = false;
 
   readonly isAdmin = computed(() =>
     this.members.currentMember()?.role === 'admin'
@@ -94,6 +122,16 @@ export class Financial implements OnInit {
       item => item.id === this.selectedPatientId()
     ) ?? null
   );
+
+  readonly selectedPatientProfessional = computed(() => {
+    const patient = this.selectedPatient();
+
+    return patient
+      ? this.professionals().find(
+        professional => professional.id === patient.professionalId
+      ) ?? null
+      : null;
+  });
 
   readonly selectedCharge = computed(() =>
     this.charges().find(
@@ -260,7 +298,16 @@ export class Financial implements OnInit {
         ? await this.patientService.list()
         : await this.clinicalService.listPatients();
 
+      const professionals = member.role === 'admin'
+        ? await this.professionalService.list()
+        : member.professionalId
+          ? await this.professionalService.getById(
+            member.professionalId
+          ).then(item => item ? [item] : [])
+          : [];
+
       this.patients.set(patients);
+      this.professionals.set(professionals);
 
       const allCharges: Charge[] = [];
 
@@ -551,6 +598,263 @@ export class Financial implements OnInit {
       );
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  downloadReceipt(payment: Payment): void {
+    this.openReceiptSignature(payment);
+    return;
+
+    const patient = this.selectedPatient()!;
+    const charge = this.selectedCharge()!;
+
+    if (!patient || !charge) {
+      this.error.set('Selecione uma cobrança válida.');
+      return;
+    }
+
+    this.downloadingReceiptId.set(payment.id);
+    this.error.set('');
+
+    try {
+      this.receiptPdfService.exportReceipt(
+        patient,
+        charge,
+        payment
+      );
+      this.success.set('Recibo de pagamento gerado.');
+    } catch {
+      this.error.set('Não foi possível gerar o recibo.');
+    } finally {
+      this.downloadingReceiptId.set(null);
+    }
+  }
+
+  openReceiptSignature(payment: Payment): void {
+    const patient = this.selectedPatient();
+    const charge = this.selectedCharge();
+    const professional = this.selectedPatientProfessional();
+
+    if (!patient || !charge) {
+      this.error.set('Selecione uma cobranÃ§a vÃ¡lida.');
+      return;
+    }
+
+    if (this.downloadingReceiptId()) return;
+
+    if (!professional) {
+      this.error.set(
+        'O paciente nao possui um psicologo responsavel ativo cadastrado.'
+      );
+      return;
+    }
+
+    const member = this.members.currentMember();
+
+    if (
+      !member?.professionalId ||
+      member.professionalId !== professional.id
+    ) {
+      this.error.set(
+        'A assinatura deve ser realizada pelo psicologo responsavel pelo paciente.'
+      );
+      return;
+    }
+
+    this.receiptSignaturePayment.set(payment);
+    this.receiptSignatureHasInk.set(false);
+    this.receiptSignatureOpen.set(true);
+    this.error.set('');
+
+    requestAnimationFrame(() =>
+      this.initializeReceiptSignatureCanvas()
+    );
+  }
+
+  private initializeReceiptSignatureCanvas(): void {
+    const canvas = this.receiptSignatureCanvas?.nativeElement;
+
+    if (!canvas) return;
+
+    const ratio = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth || 640;
+    const height = canvas.clientHeight || 200;
+
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+
+    this.receiptSignatureContext = canvas.getContext('2d');
+
+    if (!this.receiptSignatureContext) return;
+
+    this.receiptSignatureContext.scale(ratio, ratio);
+    this.receiptSignatureContext.lineCap = 'round';
+    this.receiptSignatureContext.lineJoin = 'round';
+    this.receiptSignatureContext.lineWidth = 2.4;
+    this.receiptSignatureContext.strokeStyle = '#172a46';
+  }
+
+  private receiptSignaturePoint(event: PointerEvent): {
+    x: number;
+    y: number;
+  } | null {
+    const canvas = this.receiptSignatureCanvas?.nativeElement;
+
+    if (!canvas) return null;
+
+    const bounds = canvas.getBoundingClientRect();
+
+    return {
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top
+    };
+  }
+
+  startReceiptSignature(event: PointerEvent): void {
+    const point = this.receiptSignaturePoint(event);
+
+    if (!point || !this.receiptSignatureContext) return;
+
+    this.receiptSignatureDrawing = true;
+    event.currentTarget instanceof HTMLCanvasElement &&
+      event.currentTarget.setPointerCapture(event.pointerId);
+    this.receiptSignatureContext.beginPath();
+    this.receiptSignatureContext.moveTo(point.x, point.y);
+  }
+
+  drawReceiptSignature(event: PointerEvent): void {
+    const point = this.receiptSignaturePoint(event);
+
+    if (
+      !this.receiptSignatureDrawing ||
+      !point ||
+      !this.receiptSignatureContext
+    ) {
+      return;
+    }
+
+    this.receiptSignatureContext.lineTo(point.x, point.y);
+    this.receiptSignatureContext.stroke();
+    this.receiptSignatureHasInk.set(true);
+  }
+
+  endReceiptSignature(): void {
+    this.receiptSignatureDrawing = false;
+  }
+
+  clearReceiptSignature(): void {
+    const canvas = this.receiptSignatureCanvas?.nativeElement;
+
+    if (!canvas || !this.receiptSignatureContext) return;
+
+    this.receiptSignatureContext.clearRect(
+      0,
+      0,
+      canvas.clientWidth,
+      canvas.clientHeight
+    );
+    this.receiptSignatureHasInk.set(false);
+  }
+
+  closeReceiptSignature(force = false): void {
+    if (this.downloadingReceiptId() && !force) return;
+
+    this.receiptSignatureOpen.set(false);
+    this.receiptSignaturePayment.set(null);
+    this.receiptSignatureHasInk.set(false);
+    this.receiptSignatureContext = null;
+    this.receiptSignatureDrawing = false;
+  }
+
+  async confirmReceiptSignature(): Promise<void> {
+    const patient = this.selectedPatient();
+    const charge = this.selectedCharge();
+    const payment = this.receiptSignaturePayment();
+    const professional = this.selectedPatientProfessional();
+    const canvas = this.receiptSignatureCanvas?.nativeElement;
+
+    if (
+      !patient ||
+      !charge ||
+      !payment ||
+      !professional ||
+      !canvas ||
+      !this.receiptSignatureHasInk()
+    ) {
+      this.error.set('Desenhe sua assinatura antes de confirmar.');
+      return;
+    }
+
+    this.downloadingReceiptId.set(payment.id);
+    this.error.set('');
+
+    try {
+      this.receiptPdfService.exportReceipt(
+        patient,
+        charge,
+        payment,
+        {
+          professional: {
+            name: professional.fullName,
+            crp: professional.crp
+          },
+          signature: {
+            dataUrl: canvas.toDataURL('image/png'),
+            signerName: professional.fullName,
+            signerCrp: professional.crp
+          }
+        }
+      );
+      this.closeReceiptSignature(true);
+      this.success.set('Recibo assinado gerado.');
+    } catch {
+      this.error.set('Nao foi possivel gerar o recibo assinado.');
+    } finally {
+      this.downloadingReceiptId.set(null);
+    }
+  }
+
+  downloadUnsignedReceipt(payment: Payment): void {
+    const patient = this.selectedPatient();
+    const charge = this.selectedCharge();
+    const professional = this.selectedPatientProfessional();
+
+    if (!patient || !charge) {
+      this.error.set('Selecione uma cobranÃ§a vÃ¡lida.');
+      return;
+    }
+
+    if (this.downloadingReceiptId()) return;
+
+    if (!professional) {
+      this.error.set(
+        'O paciente nao possui um psicologo responsavel ativo cadastrado.'
+      );
+      return;
+    }
+
+    this.downloadingReceiptId.set(payment.id);
+    this.error.set('');
+
+    try {
+      this.receiptPdfService.exportReceipt(
+        patient,
+        charge,
+        payment,
+        {
+          professional: {
+            name: professional.fullName,
+            crp: professional.crp
+          }
+        }
+      );
+      this.success.set(
+        'Recibo sem assinatura gerado para assinatura externa.'
+      );
+    } catch {
+      this.error.set('Nao foi possivel gerar o recibo.');
+    } finally {
+      this.downloadingReceiptId.set(null);
     }
   }
 

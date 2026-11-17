@@ -27,6 +27,107 @@
   </div>
 }
 
+@if (receiptSignatureOpen()) {
+  <div
+    class="modal-overlay"
+    role="presentation"
+    (click)="closeReceiptSignature()"
+  >
+    <section
+      class="financial-dialog signature-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="receipt-signature-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">RECIBO DE PAGAMENTO</p>
+          <h2 id="receipt-signature-title">
+            Assinar recibo
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          (click)="closeReceiptSignature()"
+          [disabled]="downloadingReceiptId() !== null"
+        >
+          Fechar
+        </button>
+      </div>
+
+      <div class="dialog-body">
+        <p class="signature-modal-help">
+          Desenhe sua assinatura para incluí-la neste recibo.
+          Ao gerar novamente, será necessário assinar outra vez.
+        </p>
+
+        <div class="signature-pad-wrapper">
+          <canvas
+            #receiptSignatureCanvas
+            class="signature-pad"
+            aria-label="Área para desenhar a assinatura do recibo"
+            (pointerdown)="startReceiptSignature($event)"
+            (pointermove)="drawReceiptSignature($event)"
+            (pointerup)="endReceiptSignature()"
+            (pointerleave)="endReceiptSignature()"
+            (pointercancel)="endReceiptSignature()"
+          ></canvas>
+          <span>Assine acima</span>
+        </div>
+
+        <div class="signature-modal-notice">
+          <i class="pi pi-info-circle"></i>
+          Esta assinatura é desenhada no PsyCare e não é uma assinatura
+          Gov.br ou ICP-Brasil.
+        </div>
+      </div>
+
+      <div class="dialog-footer signature-dialog-footer">
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          (click)="clearReceiptSignature()"
+          [disabled]="downloadingReceiptId() !== null"
+        >
+          <i class="pi pi-eraser"></i>
+          Limpar
+        </button>
+
+        <div>
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            (click)="closeReceiptSignature()"
+            [disabled]="downloadingReceiptId() !== null"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="confirmReceiptSignature()"
+            [disabled]="
+              downloadingReceiptId() !== null ||
+              !receiptSignatureHasInk()
+            "
+          >
+            <i class="pi pi-check"></i>
+            {{
+              downloadingReceiptId()
+                ? 'Gerando...'
+                : 'Gerar recibo assinado'
+            }}
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+}
+
 @if (success()) {
   <div class="alert alert-success" role="status">
     {{ success() }}
@@ -353,6 +454,30 @@
                         >
                           <i class="pi pi-pencil"></i>
                           Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-secondary"
+                          (click)="downloadReceipt(payment)"
+                          [disabled]="downloadingReceiptId() !== null"
+                        >
+                          <i class="pi pi-file-pdf"></i>
+                          {{
+                            downloadingReceiptId() === payment.id
+                              ? 'Gerando...'
+                              : 'Recibo'
+                          }}
+                        </button>
+
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-secondary"
+                          (click)="downloadUnsignedReceipt(payment)"
+                          [disabled]="downloadingReceiptId() !== null"
+                        >
+                          <i class="pi pi-file-export"></i>
+                          Sem assinatura
                         </button>
                       </td>
                     </tr>

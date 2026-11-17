@@ -1,23 +1,20 @@
-
 <section class="welcome">
-  <p class="eyebrow">VISÃO GERAL</p>
+  <p class="eyebrow">VISAO GERAL</p>
 
   <h1>Bem-vindo ao PsyCare</h1>
 
   <p>
-    A estrutura de autenticação, perfis e cadastro
-    de profissionais está disponível.
+    Acompanhe os pacientes e os compromissos da sua clinica.
   </p>
 </section>
 
-<section class="cards" aria-label="Módulos da clínica">
+<section class="cards" aria-label="Modulos da clinica">
   <article class="stat-card">
     <i class="pi pi-users"></i>
     <h2>Pacientes</h2>
 
     <p>
-      Cadastro e informações clínicas serão
-      implementados nas próximas etapas.
+      Consulte os pacientes cadastrados e seus dados clinicos.
     </p>
   </article>
 
@@ -26,8 +23,7 @@
     <h2>Agenda</h2>
 
     <p>
-      Calendário interativo e agendamentos de
-      consultas virão em seguida.
+      Visualize os proximos atendimentos agendados.
     </p>
   </article>
 
@@ -36,17 +32,96 @@
     <h2>Profissionais</h2>
 
     <p>
-      Cadastro, edição e listagem dos psicólogos
-      já disponíveis no menu.
+      Consulte os psicologos cadastrados na clinica.
     </p>
   </article>
 </section>
+
+@if (agendaAvailable()) {
+  <section class="scheduled-panel" aria-labelledby="scheduled-title">
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">AGENDA</p>
+        <h2 id="scheduled-title">Pacientes agendados</h2>
+        <p>{{ appointmentRangeLabel() }}</p>
+      </div>
+
+      <div class="panel-actions">
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          (click)="loadScheduledPatients()"
+          [disabled]="loadingAppointments()"
+        >
+          <i class="pi pi-refresh"></i>
+          Atualizar
+        </button>
+
+        <a
+          class="btn btn-primary btn-sm"
+          routerLink="/appointments"
+        >
+          <i class="pi pi-calendar"></i>
+          Ver agenda
+        </a>
+      </div>
+    </div>
+
+    @if (loadingAppointments()) {
+      <div class="scheduled-empty">
+        <i class="pi pi-spin pi-spinner"></i>
+        Carregando pacientes agendados...
+      </div>
+    } @else if (appointmentsError()) {
+      <div class="scheduled-empty error-state">
+        <i class="pi pi-exclamation-circle"></i>
+        <span>{{ appointmentsError() }}</span>
+      </div>
+    } @else if (scheduledPatients().length === 0) {
+      <div class="scheduled-empty">
+        <i class="pi pi-calendar-times"></i>
+        <span>Nenhum paciente agendado para os proximos dias.</span>
+      </div>
+    } @else {
+      <div class="scheduled-list">
+        @for (item of scheduledPatients(); track item.id) {
+          <article class="scheduled-item">
+            <div class="scheduled-date">
+              <strong>{{ item.startTime }}</strong>
+              <span>{{ formatDate(item.date) }}</span>
+            </div>
+
+            <div class="scheduled-patient">
+              <span class="patient-avatar">
+                {{ item.patient.fullName.charAt(0).toUpperCase() }}
+              </span>
+
+              <div>
+                <strong>{{ item.patient.fullName }}</strong>
+                <span>
+                  Psicologo: {{ item.professional.fullName }}
+                  · CRP {{ item.professional.crp }}
+                </span>
+              </div>
+            </div>
+
+            <span
+              class="appointment-status"
+              [class.confirmed]="item.status === 'confirmed'"
+            >
+              {{ statusLabel(item.status) }}
+            </span>
+          </article>
+        }
+      </div>
+    }
+  </section>
+}
 
 <section class="notice">
   <i class="pi pi-shield"></i>
 
   <span>
-    Protótipo: ainda não registre dados clínicos
-    ou de pacientes reais.
+    Os dados apresentados respeitam as permissões do usuário e da clinica.
   </span>
 </section>

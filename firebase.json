@@ -6,7 +6,7 @@
     "rules": "storage.rules"
   },
   "hosting": {
-    "public": "dist/psycare",
+    "public": "dist/psycare/browser",
     "ignore": [
       "firebase.json",
       "**/.*",

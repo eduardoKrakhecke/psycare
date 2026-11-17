@@ -1,0 +1,250 @@
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">EQUIPE</p>
+    <h1>Profissionais</h1>
+    <p>Psicólogos vinculados à clínica e suas informações profissionais.</p>
+  </div>
+
+  @if (canEdit()) {
+    <button class="btn btn-primary" type="button" (click)="openNew()">
+      <i class="pi pi-plus"></i>
+      Novo profissional
+    </button>
+  }
+</section>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">
+    {{ error() }}
+  </div>
+}
+
+@if (success()) {
+  <div class="alert alert-success" role="status">
+    {{ success() }}
+  </div>
+}
+
+@if (editorOpen() && canEdit()) {
+  <section class="panel form-panel" aria-label="Cadastro de profissional">
+    <div class="form-heading">
+      <h2>
+        {{ editingId() ? 'Editar profissional' : 'Novo profissional' }}
+      </h2>
+
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        (click)="close()"
+      >
+        Fechar
+      </button>
+    </div>
+
+    <form (ngSubmit)="submit()" #professionalForm="ngForm">
+      <div class="form-grid">
+        <div class="field wide">
+          <label for="fullName">Nome completo *</label>
+          <input
+            class="form-control"
+            id="fullName"
+            name="fullName"
+            required
+            minlength="3"
+            maxlength="120"
+            [(ngModel)]="form.fullName"
+          />
+        </div>
+
+        <div class="field">
+          <label for="crp">Registro CRP *</label>
+          <input
+            class="form-control"
+            id="crp"
+            name="crp"
+            required
+            maxlength="30"
+            placeholder="Ex.: CRP 07/12345"
+            [(ngModel)]="form.crp"
+          />
+        </div>
+
+        <div class="field">
+          <label for="phone">Telefone</label>
+          <input
+            class="form-control"
+            id="phone"
+            name="phone"
+            maxlength="30"
+            placeholder="(00) 00000-0000"
+            [(ngModel)]="form.phone"
+          />
+        </div>
+
+        <div class="field">
+          <label for="email">E-mail</label>
+          <input
+            class="form-control"
+            id="email"
+            name="email"
+            type="email"
+            maxlength="160"
+            [(ngModel)]="form.email"
+          />
+        </div>
+
+        <div class="field">
+          <label for="specialties">Especialidades</label>
+          <input
+            class="form-control"
+            id="specialties"
+            name="specialties"
+            maxlength="900"
+            placeholder="Infantil, Adultos, Terapia familiar"
+            [(ngModel)]="form.specialtiesText"
+          />
+          <small>
+            Separe as especialidades por vírgula (máximo de 12).
+          </small>
+        </div>
+
+        <div class="field field-check">
+          <label class="form-check-label">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              name="active"
+              [(ngModel)]="form.active"
+            />
+            Profissional ativo
+          </label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          (click)="close()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="saving() || professionalForm.invalid"
+        >
+          {{ saving() ? 'Salvando...' : 'Salvar profissional' }}
+        </button>
+      </div>
+    </form>
+  </section>
+}
+
+<section class="panel">
+  <div class="toolbar">
+    <label class="search-label" for="professional-search">
+      Pesquisar profissional
+    </label>
+
+    <div class="search-box">
+      <i class="pi pi-search"></i>
+
+      <input
+        id="professional-search"
+        type="search"
+        class="form-control"
+        placeholder="Nome, CRP, e-mail ou especialidade"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+    </div>
+
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      (click)="reload()"
+      [disabled]="loading()"
+    >
+      <i class="pi pi-refresh"></i>
+      Atualizar
+    </button>
+  </div>
+
+  @if (loading()) {
+    <p class="empty">Carregando profissionais...</p>
+  } @else if (filtered().length === 0) {
+    <p class="empty">Nenhum profissional encontrado.</p>
+  } @else {
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Profissional</th>
+          <th>CRP</th>
+          <th>Especialidades</th>
+          <th>Status</th>
+          @if (canEdit()) {
+            <th>Ações</th>
+          }
+        </tr>
+        </thead>
+
+        <tbody>
+          @for (item of filtered(); track item.id) {
+            <tr>
+              <td>
+                <strong>{{ item.fullName }}</strong>
+                <small>{{ item.email || 'Sem e-mail' }}</small>
+              </td>
+
+              <td>{{ item.crp }}</td>
+
+              <td>
+                {{ item.specialties.join(', ') || '—' }}
+              </td>
+
+              <td>
+                <span
+                  class="status"
+                  [class.inactive]="!item.active"
+                >
+                  {{ item.active ? 'Ativo' : 'Inativo' }}
+                </span>
+              </td>
+
+              @if (canEdit()) {
+                <td class="actions">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary"
+                    (click)="edit(item)"
+                    [disabled]="saving()"
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    (click)="toggleActive(item)"
+                    [disabled]="saving()"
+                  >
+                    {{ item.active ? 'Desativar' : 'Reativar' }}
+                  </button>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <p class="footnote">
+    Exibindo até 100 registros por consulta nesta versão inicial.
+  </p>
+</section>
+

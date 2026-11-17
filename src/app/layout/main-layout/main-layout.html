@@ -1,30 +1,91 @@
+
 <div class="shell">
   <aside class="sidebar">
-    <div class="logo"><i class="pi pi-heart"></i><span>PsyCare</span></div>
-    <p class="section-label">GESTÃO DA CLÍNICA</p>
-    <a routerLink="/dashboard" routerLinkActive="selected">
-      <i class="pi pi-home"></i> Painel principal
+    <div class="logo">
+      <i class="pi pi-heart"></i>
+      <span>PsyCare</span>
+    </div>
+
+    <p class="section-label">
+      GESTÃO DA CLÍNICA
+    </p>
+
+    <a
+      routerLink="/dashboard"
+      routerLinkActive="selected"
+    >
+      <i class="pi pi-home"></i>
+      Painel principal
     </a>
+
+    @if (canViewProfessionals()) {
+      <a
+        routerLink="/professionals"
+        routerLinkActive="selected"
+      >
+        <i class="pi pi-id-card"></i>
+        Profissionais
+      </a>
+    }
+
+    @if (isAdmin()) {
+      <a
+        routerLink="/members"
+        routerLinkActive="selected"
+      >
+        <i class="pi pi-shield"></i>
+        Usuários e acessos
+      </a>
+    }
+
     <div class="upcoming">
       <i class="pi pi-calendar-clock"></i>
-      <span>Agenda, pacientes e profissionais serão implementados nas próximas etapas.</span>
+      <span>
+        Pacientes, agenda e atendimentos serão
+        implementados nas próximas etapas.
+      </span>
     </div>
-    <div class="sidebar-bottom">PsyCare • Versão inicial</div>
+
+    <div class="sidebar-bottom">
+      PsyCare • Firebase Spark
+    </div>
   </aside>
 
   <div class="content">
     <header class="topbar">
-      <span class="topbar-title">Sistema de gestão psicológica</span>
+      <span class="topbar-title">
+        Sistema de gestão psicológica
+      </span>
+
       <div class="top-actions">
-        <button type="button" class="icon-button" (click)="toggleTheme()" aria-label="Alternar tema">
-          <i [class]="dark() ? 'pi pi-sun' : 'pi pi-moon'"></i>
+        <button
+          type="button"
+          class="icon-button"
+          (click)="toggleTheme()"
+          aria-label="Alternar tema"
+        >
+          <i
+            [class]="dark() ? 'pi pi-sun' : 'pi pi-moon'"
+          ></i>
         </button>
-        <span class="user-email">{{ authService.currentUser()?.email }}</span>
-        <button type="button" class="logout-button" (click)="logout()">
-          <i class="pi pi-sign-out"></i> Sair
+
+        <span class="user-email">
+          {{ memberService.currentMember()?.name }}
+          ·
+          {{ authService.currentUser()?.email }}
+        </span>
+
+        <button
+          type="button"
+          class="logout-button"
+          (click)="logout()"
+        >
+          <i class="pi pi-sign-out"></i>
+          Sair
         </button>
       </div>
     </header>
+
     <main class="main-content">
       <router-outlet />
     </main>

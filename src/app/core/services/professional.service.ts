@@ -1,0 +1,83 @@
+
+import { Injectable } from '@angular/core';
+
+import {
+  collection,
+  doc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc
+} from 'firebase/firestore';
+
+import { firestore } from '../firebase/firebase';
+import { environment } from '../../../environments/environment';
+
+import type {
+  Professional,
+  ProfessionalInput
+} from '../models/professional.model';
+
+@Injectable({ providedIn: 'root' })
+export class ProfessionalService {
+  private readonly path = [
+    'clinics',
+    environment.clinicId,
+    'professionals'
+  ] as const;
+
+  async list(): Promise<Professional[]> {
+    const ref = collection(firestore, ...this.path);
+
+    const snapshot = await getDocs(
+      query(ref, limit(100))
+    );
+
+    return snapshot.docs
+      .map(item => ({
+        ...(item.data() as Omit<Professional, 'id'>),
+        id: item.id
+      }))
+      .sort((a, b) =>
+        a.fullName.localeCompare(b.fullName, 'pt-BR')
+      );
+  }
+
+  async create(input: ProfessionalInput): Promise<void> {
+    const ref = doc(
+      collection(firestore, ...this.path)
+    );
+
+    await setDoc(ref, {
+      ...input,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  async update(
+    id: string,
+    input: ProfessionalInput
+  ): Promise<void> {
+    const ref = doc(firestore, ...this.path, id);
+
+    await updateDoc(ref, {
+      ...input,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  async setActive(
+    id: string,
+    active: boolean
+  ): Promise<void> {
+    const ref = doc(firestore, ...this.path, id);
+
+    await updateDoc(ref, {
+      active,
+      updatedAt: serverTimestamp()
+    });
+  }
+}

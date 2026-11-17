@@ -1,0 +1,140 @@
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">SEGURANÇA</p>
+    <h1>Usuários e acessos</h1>
+    <p>
+      Administre as permissões dos usuários já vinculados à clínica.
+    </p>
+  </div>
+
+  <button
+    type="button"
+    class="btn btn-outline-secondary"
+    (click)="reload()"
+    [disabled]="loading()"
+  >
+    <i class="pi pi-refresh"></i>
+    Atualizar
+  </button>
+</section>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">
+    {{ error() }}
+  </div>
+}
+
+@if (success()) {
+  <div class="alert alert-success" role="status">
+    {{ success() }}
+  </div>
+}
+
+<section class="notice">
+  <i class="pi pi-info-circle"></i>
+  <p>
+    Novos usuários são criados em
+    <strong>Firebase Authentication</strong>
+    e vinculados manualmente em
+    <code>clinics/clinica-principal/members</code>.
+
+    Não há cadastro público nesta etapa.
+    O administrador inicial só pode ser alterado pelo Console.
+  </p>
+</section>
+
+<section class="panel">
+  @if (loading()) {
+    <p class="empty">Carregando usuários...</p>
+  } @else if (items().length === 0) {
+    <p class="empty">Nenhum usuário encontrado.</p>
+  } @else {
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Perfil</th>
+          <th>Situação</th>
+          <th>Ação</th>
+        </tr>
+        </thead>
+
+        <tbody>
+          @for (item of items(); track item.uid) {
+            <tr>
+              <td>
+                <strong>{{ item.name }}</strong>
+                <small>{{ item.uid }}</small>
+              </td>
+
+              @if (item.role === 'admin') {
+                <td>Administrador</td>
+
+                <td>
+                  {{ item.active ? 'Ativo' : 'Inativo' }}
+                </td>
+
+                <td>
+                  <span class="fixed">Protegido</span>
+                </td>
+              } @else {
+                <td>
+                  <select
+                    class="form-select"
+                    [name]="'role-' + item.uid"
+                    [(ngModel)]="drafts[item.uid].role"
+                    aria-label="Perfil de acesso"
+                  >
+                    <option value="psychologist">
+                      Psicólogo
+                    </option>
+
+                    <option value="receptionist">
+                      Recepcionista
+                    </option>
+                  </select>
+                </td>
+
+                <td>
+                  <label class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      [name]="'active-' + item.uid"
+                      [(ngModel)]="drafts[item.uid].active"
+                    />
+
+                    <span class="form-check-label">
+                      Ativo
+                    </span>
+                  </label>
+                </td>
+
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-primary"
+                    (click)="save(item)"
+                    [disabled]="savingUid() !== null"
+                  >
+                    {{
+                      savingUid() === item.uid
+                        ? 'Salvando...'
+                        : 'Salvar'
+                    }}
+                  </button>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <p class="footnote">
+    Exibindo até 100 usuários nesta versão inicial.
+  </p>
+</section>

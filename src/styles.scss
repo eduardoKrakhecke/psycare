@@ -18,3 +18,55 @@
 }
 html, body { min-height: 100%; margin: 0; }
 body { background: var(--pc-bg); color: var(--pc-text); }
+
+/*
+ * Tabelas com muitas colunas continuam legíveis em telas pequenas sem
+ * estourar a largura do layout. O scroll fica restrito ao próprio painel.
+ */
+.table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.table-responsive > .table {
+  width: 100%;
+  min-width: 680px;
+  margin-bottom: 0;
+}
+
+.table-responsive th,
+.table-responsive td {
+  max-width: 280px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.table-responsive .actions,
+.table-responsive .table-actions {
+  max-width: none;
+}
+
+.table-responsive .table-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .table-responsive > .table {
+    min-width: 620px;
+  }
+
+  .table-responsive .form-select {
+    min-width: 0;
+    width: 100%;
+    max-width: 190px;
+  }
+
+  .table-responsive .btn {
+    white-space: nowrap;
+  }
+}

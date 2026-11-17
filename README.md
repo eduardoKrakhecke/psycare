@@ -178,9 +178,11 @@ firebase deploy --only storage
 
 ## Perfis de acesso
 
-- `admin`: administra a clínica, usuários, profissionais e dados permitidos pelas regras.
+- `admin`: proprietário da operação; administra usuários e acessa somente os dados vinculados ao seu profissional.
 - `psychologist`: acessa os pacientes vinculados ao seu cadastro profissional e os registros clínicos autorizados.
-- `receptionist`: atua nas rotinas administrativas, como pacientes, profissionais e agenda.
+- `receptionist` e `secretary`: operam pacientes, agenda e financeiro somente dentro do escopo do profissional ao qual foram vinculados.
+
+Cada membro operacional precisa ter `professionalId`. Esse vínculo é a fronteira de dados: dois profissionais diferentes não compartilham pacientes, agenda, cobranças ou documentos.
 
 O acesso real é validado pelas regras do Firestore e pelos guards da aplicação. Portanto, alterar a interface não concede permissões adicionais ao usuário.
 

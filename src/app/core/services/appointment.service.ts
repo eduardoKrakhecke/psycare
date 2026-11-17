@@ -1,5 +1,5 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import {
   collection,
@@ -18,6 +18,9 @@ import {
   firestore
 } from '../firebase/firebase';
 
+import { MemberService }
+  from '../auth/member.service';
+
 import { environment } from '../../../environments/environment';
 
 import type {
@@ -34,6 +37,8 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
+  private readonly members = inject(MemberService);
+
   private readonly base = [
     'clinics',
     environment.clinicId
@@ -79,8 +84,17 @@ export class AppointmentService {
     startDate: string,
     endDateExclusive: string
   ): Promise<Appointment[]> {
+    const professionalId = this.members.currentMember()?.professionalId;
+
+    if (!professionalId) {
+      throw new Error(
+        'O usuário não possui um profissional vinculado.'
+      );
+    }
+
     const reference = query(
       this.appointmentsRef(),
+      where('professionalId', '==', professionalId),
       where('date', '>=', startDate),
       where('date', '<', endDateExclusive),
       limit(500)
@@ -100,6 +114,15 @@ export class AppointmentService {
     }
 
     const uid = this.currentUid();
+
+    if (
+      input.professionalId !==
+      this.members.currentMember()?.professionalId
+    ) {
+      throw new Error(
+        'A consulta deve pertencer ao profissional do usuário.'
+      );
+    }
 
     const appointmentRef = doc(this.appointmentsRef());
 

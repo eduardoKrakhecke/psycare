@@ -74,11 +74,16 @@
             [(ngModel)]="newMember.role"
           >
             <option value="receptionist">Recepcionista</option>
+            <option value="secretary">Secretário</option>
             <option value="psychologist">Psicólogo</option>
           </select>
         </div>
 
-        @if (newMember.role === 'psychologist') {
+        @if (
+          newMember.role === 'psychologist' ||
+          newMember.role === 'receptionist' ||
+          newMember.role === 'secretary'
+        ) {
           <div class="col-md-6">
             <label class="form-label" for="newProfessional">
               Profissional *
@@ -142,9 +147,33 @@
 
               @if (item.role === 'admin') {
                 <td>Administrador</td>
-                <td>Acesso completo</td>
+                <td>
+                  <select
+                    class="form-select"
+                    [name]="'owner-professional-' + item.uid"
+                    [(ngModel)]="ownerProfessionalDrafts[item.uid]"
+                  >
+                    <option value="">Selecione o profissional</option>
+                    @for (p of professionals(); track p.id) {
+                      @if (p.active) {
+                        <option [value]="p.id">
+                          {{ p.fullName }} — {{ p.crp }}
+                        </option>
+                      }
+                    }
+                  </select>
+                </td>
                 <td>{{ item.active ? 'Ativo' : 'Inativo' }}</td>
-                <td><span class="fixed">Protegido</span></td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-primary"
+                    (click)="save(item)"
+                    [disabled]="saving()"
+                  >
+                    Salvar
+                  </button>
+                </td>
               } @else {
                 <td>
                   <select
@@ -156,11 +185,16 @@
                     <option value="receptionist">
                       Recepcionista
                     </option>
+                    <option value="secretary">Secretário</option>
                   </select>
                 </td>
 
                 <td>
-                  @if (drafts[item.uid].role === 'psychologist') {
+                  @if (
+                    drafts[item.uid].role === 'psychologist' ||
+                    drafts[item.uid].role === 'receptionist' ||
+                    drafts[item.uid].role === 'secretary'
+                  ) {
                     <select
                       class="form-select"
                       [name]="'professional-' + item.uid"

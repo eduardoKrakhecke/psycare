@@ -45,7 +45,7 @@ export class MemberService {
       !snapshot.exists() ||
       !data ||
       data['active'] !== true ||
-      !['admin', 'psychologist', 'receptionist']
+      !['admin', 'psychologist', 'receptionist', 'secretary']
         .includes(data['role'])
     ) {
       this.clear();

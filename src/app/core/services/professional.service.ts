@@ -1,5 +1,5 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import {
   collection,
@@ -16,6 +16,9 @@ import {
 import { firestore } from '../firebase/firebase';
 import { environment } from '../../../environments/environment';
 
+import { MemberService }
+  from '../auth/member.service';
+
 import type {
   Professional,
   ProfessionalInput
@@ -23,6 +26,8 @@ import type {
 
 @Injectable({ providedIn: 'root' })
 export class ProfessionalService {
+  private readonly members = inject(MemberService);
+
   private readonly path = [
     'clinics',
     environment.clinicId,
@@ -49,6 +54,16 @@ export class ProfessionalService {
   }
 
   async list(): Promise<Professional[]> {
+    const member = this.members.currentMember();
+
+    if (member?.professionalId) {
+      const professional = await this.getById(
+        member.professionalId
+      );
+
+      return professional ? [professional] : [];
+    }
+
     const ref = collection(firestore, ...this.path);
 
     const snapshot = await getDocs(

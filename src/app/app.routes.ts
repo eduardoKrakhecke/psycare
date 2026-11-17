@@ -49,7 +49,7 @@ export const routes: Routes = [
         title: 'Agenda | PsyCare',
         canActivate: [roleGuard],
         data: {
-          roles: ['admin', 'receptionist']
+          roles: ['admin', 'receptionist', 'secretary']
         },
         loadComponent: () =>
           import('./features/appointments/appointments')
@@ -60,7 +60,7 @@ export const routes: Routes = [
         title: 'Pacientes | PsyCare',
         canActivate: [roleGuard],
         data: {
-          roles: ['admin', 'receptionist']
+          roles: ['admin', 'receptionist', 'secretary']
         },
         loadComponent: () =>
           import('./features/patients/patients')
@@ -71,7 +71,7 @@ export const routes: Routes = [
         title: 'Profissionais | PsyCare',
         canActivate: [roleGuard],
         data: {
-          roles: ['admin', 'receptionist']
+          roles: ['admin', 'receptionist', 'secretary']
         },
         loadComponent: () =>
           import('./features/professionals/professionals')
@@ -105,7 +105,12 @@ export const routes: Routes = [
         title: 'Financeiro | PsyCare',
         canActivate: [roleGuard],
         data: {
-          roles: ['admin', 'psychologist']
+          roles: [
+            'admin',
+            'psychologist',
+            'receptionist',
+            'secretary'
+          ]
         },
         loadComponent: () =>
           import('./features/financial/financial')

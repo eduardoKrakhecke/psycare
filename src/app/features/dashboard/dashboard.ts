@@ -95,7 +95,7 @@ export class Dashboard implements OnInit {
 
       if (
         !member ||
-        !['admin', 'receptionist'].includes(member.role)
+        !['admin', 'receptionist', 'secretary'].includes(member.role)
       ) {
         this.agendaAvailable.set(false);
         this.scheduledPatients.set([]);

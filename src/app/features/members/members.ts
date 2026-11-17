@@ -54,6 +54,7 @@ export class Members implements OnInit {
   readonly newMemberOpen = signal(false);
 
   drafts: Record<string, AccessDraft> = {};
+  ownerProfessionalDrafts: Record<string, string> = {};
 
   newMember = {
     uid: '',
@@ -91,6 +92,12 @@ export class Members implements OnInit {
             }
           ])
       );
+
+      this.ownerProfessionalDrafts = Object.fromEntries(
+        members
+          .filter(item => item.role === 'admin')
+          .map(item => [item.uid, item.professionalId ?? ''])
+      );
     } catch {
       this.error.set(
         'Não foi possível carregar usuários e profissionais.'
@@ -104,21 +111,53 @@ export class Members implements OnInit {
     role: OperationalRole,
     professionalId: string
   ): boolean {
-    if (role === 'receptionist') return true;
-
     return this.professionals().some(item =>
       item.id === professionalId && item.active
     );
   }
 
   async save(item: ClinicMember): Promise<void> {
-    if (
-      this.saving() ||
-      item.role === 'admin' ||
-      item.uid === this.auth.currentUser()?.uid
-    ) {
+    if (this.saving()) {
       return;
     }
+
+    if (item.role === 'admin') {
+      if (item.uid !== this.auth.currentUser()?.uid) return;
+
+      const professionalId =
+        this.ownerProfessionalDrafts[item.uid] ?? '';
+
+      if (!this.validProfessional('psychologist', professionalId)) {
+        this.error.set(
+          'Vincule o administrador a um profissional ativo.'
+        );
+        return;
+      }
+
+      this.saving.set(true);
+      this.error.set('');
+      this.success.set('');
+
+      try {
+        await this.service.updateOwnerProfessional(
+          professionalId
+        );
+        await this.reload();
+        this.success.set(
+          'Profissional proprietário atualizado com sucesso.'
+        );
+      } catch {
+        this.error.set(
+          'Não foi possível vincular o profissional proprietário.'
+        );
+      } finally {
+        this.saving.set(false);
+      }
+
+      return;
+    }
+
+    if (item.uid === this.auth.currentUser()?.uid) return;
 
     const draft = this.drafts[item.uid];
 

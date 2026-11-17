@@ -280,21 +280,20 @@ export class Financial implements OnInit {
 
       if (
         !member ||
-        !['admin', 'psychologist'].includes(member.role)
+        !['admin', 'psychologist', 'receptionist', 'secretary']
+          .includes(member.role)
       ) {
         throw new Error('Usuário sem acesso financeiro.');
       }
 
-      if (
-        member.role === 'psychologist' &&
-        !member.professionalId
-      ) {
+      if (!member.professionalId) {
         throw new Error(
           'Seu usuário não possui um psicólogo vinculado.'
         );
       }
 
-      const patients = member.role === 'admin'
+      const patients = ['admin', 'receptionist', 'secretary']
+        .includes(member.role)
         ? await this.patientService.list()
         : await this.clinicalService.listPatients();
 

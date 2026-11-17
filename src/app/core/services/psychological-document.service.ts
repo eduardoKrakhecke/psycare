@@ -305,11 +305,8 @@ export class PsychologicalDocumentService {
     }
 
     if (
-      member.role === 'psychologist' &&
-      (
-        member.professionalId !== professional.id ||
-        patient.professionalId !== professional.id
-      )
+      member.professionalId !== professional.id ||
+      patient.professionalId !== professional.id
     ) {
       throw new Error(
         'O paciente nao esta vinculado ao profissional.'

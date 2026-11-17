@@ -43,12 +43,40 @@ service cloud.firestore {
     }
 
     function administrative(clinicId) {
-      return hasRole(clinicId, ['admin', 'receptionist']);
+      return hasRole(
+          clinicId,
+          ['admin', 'receptionist', 'secretary']
+        )
+        && myProfessionalId(clinicId) != '';
     }
 
     function myProfessionalId(clinicId) {
       return get(memberPath(clinicId))
         .data.get('professionalId', '');
+    }
+
+    function hasProfessionalScope(clinicId, professionalId) {
+      return activeMember(clinicId)
+        && myProfessionalId(clinicId) is string
+        && myProfessionalId(clinicId) != ''
+        && professionalId is string
+        && professionalId == myProfessionalId(clinicId);
+    }
+
+    function canManageProfessionalData(
+      clinicId, professionalId
+    ) {
+      return administrative(clinicId)
+        && hasProfessionalScope(clinicId, professionalId);
+    }
+
+    function canAccessPatient(clinicId, patientId) {
+      return exists(patientPath(clinicId, patientId))
+        && hasProfessionalScope(
+          clinicId,
+          get(patientPath(clinicId, patientId))
+            .data.professionalId
+        );
     }
 
     function isAssignedPsychologist(clinicId, patientId) {
@@ -62,7 +90,10 @@ service cloud.firestore {
     function canReadClinical(
       clinicId, patientId, authorUid
     ) {
-      return isAdmin(clinicId)
+      return (
+          isAdmin(clinicId)
+          && canAccessPatient(clinicId, patientId)
+        )
         || (
           isAssignedPsychologist(clinicId, patientId)
           && authorUid == request.auth.uid
@@ -74,7 +105,10 @@ service cloud.firestore {
         && get(patientPath(clinicId, patientId))
           .data.active == true
         && (
-          isAdmin(clinicId)
+          (
+            isAdmin(clinicId)
+            && canAccessPatient(clinicId, patientId)
+          )
           || isAssignedPsychologist(clinicId, patientId)
         );
     }
@@ -332,11 +366,23 @@ service cloud.firestore {
     match /clinics/{clinicId}/members/{memberId} {
       allow get: if signedIn() && (
         request.auth.uid == memberId
-        || isAdmin(clinicId)
+        || (
+          isAdmin(clinicId)
+          && (
+            myProfessionalId(clinicId) == ''
+            || resource.data.professionalId
+              == myProfessionalId(clinicId)
+          )
+        )
       );
 
       allow list: if isAdmin(clinicId)
-        && request.query.limit <= 100;
+        && request.query.limit <= 100
+        && (
+          myProfessionalId(clinicId) == ''
+          || resource.data.professionalId
+            == myProfessionalId(clinicId)
+        );
 
       allow create: if isAdmin(clinicId)
         && memberId != request.auth.uid
@@ -350,21 +396,47 @@ service cloud.firestore {
         && request.resource.data.name.size() >= 2
         && request.resource.data.name.size() <= 120
         && request.resource.data.role in [
-          'psychologist', 'receptionist'
+          'psychologist', 'receptionist', 'secretary'
         ]
         && request.resource.data.active is bool
-        && request.resource.data.get('professionalId', '') is string;
+        && request.resource.data.professionalId is string
+        && activeProfessional(
+          clinicId,
+          request.resource.data.professionalId
+        )
+        && request.resource.data.professionalId
+          == myProfessionalId(clinicId);
 
       allow update: if isAdmin(clinicId)
+        && memberId == request.auth.uid
+        && resource.data.role == 'admin'
+        && request.resource.data.role == 'admin'
+        && request.resource.data.active == true
+        && request.resource.data.professionalId is string
+        && activeProfessional(
+          clinicId,
+          request.resource.data.professionalId
+        )
+        && request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasOnly(['professionalId'])
+        || isAdmin(clinicId)
         && memberId != request.auth.uid
         && resource.data.role in [
-          'psychologist', 'receptionist'
+          'psychologist', 'receptionist', 'secretary'
         ]
         && request.resource.data.role in [
-          'psychologist', 'receptionist'
+          'psychologist', 'receptionist', 'secretary'
         ]
         && request.resource.data.active is bool
-        && request.resource.data.get('professionalId', '') is string
+        && request.resource.data.professionalId is string
+        && activeProfessional(
+          clinicId,
+          request.resource.data.professionalId
+        )
+        && request.resource.data.professionalId
+          == myProfessionalId(clinicId)
         && request.resource.data
           .diff(resource.data)
           .affectedKeys()
@@ -375,19 +447,19 @@ service cloud.firestore {
       allow delete: if isAdmin(clinicId)
         && memberId != request.auth.uid
         && resource.data.role in [
-          'psychologist', 'receptionist'
-        ];
+          'psychologist', 'receptionist', 'secretary'
+        ]
+        && resource.data.professionalId
+          == myProfessionalId(clinicId);
     }
 
     // PROFISSIONAIS
     match /clinics/{clinicId}/professionals/{professionalId} {
-      allow get: if administrative(clinicId)
-        || (
-          hasRole(clinicId, ['psychologist'])
-          && myProfessionalId(clinicId) == professionalId
-        );
+      allow get: if hasProfessionalScope(
+        clinicId, professionalId
+      );
 
-      allow list: if administrative(clinicId)
+      allow list: if isAdmin(clinicId)
         && request.query.limit <= 100;
 
       allow create: if isAdmin(clinicId)
@@ -396,6 +468,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
 
       allow update: if isAdmin(clinicId)
+        && hasProfessionalScope(clinicId, professionalId)
         && validProfessional(request.resource.data)
         && request.resource.data.createdAt
           == resource.data.createdAt
@@ -413,26 +486,19 @@ service cloud.firestore {
 
     // PACIENTES
     match /clinics/{clinicId}/patients/{patientId} {
-      allow get: if administrative(clinicId)
-        || (
-          hasRole(clinicId, ['psychologist'])
-          && myProfessionalId(clinicId) != ''
-          && resource.data.professionalId
-            == myProfessionalId(clinicId)
-        );
+      allow get: if canManageProfessionalData(
+        clinicId, resource.data.professionalId
+      );
 
       allow list: if request.query.limit <= 100
-        && (
-          administrative(clinicId)
-          || (
-            hasRole(clinicId, ['psychologist'])
-            && myProfessionalId(clinicId) != ''
-            && resource.data.professionalId
-              == myProfessionalId(clinicId)
-          )
+        && canManageProfessionalData(
+          clinicId, resource.data.professionalId
         );
 
-      allow create: if administrative(clinicId)
+      allow create: if canManageProfessionalData(
+          clinicId,
+          request.resource.data.professionalId
+        )
         && validPatient(request.resource.data)
         && activeProfessional(
           clinicId, request.resource.data.professionalId
@@ -441,24 +507,22 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      allow update: if administrative(clinicId)
+      allow update: if canManageProfessionalData(
+          clinicId,
+          resource.data.professionalId
+        )
+        && canManageProfessionalData(
+          clinicId,
+          request.resource.data.professionalId
+        )
         && validPatient(request.resource.data)
         && request.resource.data.createdBy
           == resource.data.createdBy
         && request.resource.data.createdAt
           == resource.data.createdAt
         && request.resource.data.updatedAt == request.time
-        && (
-          request.resource.data.professionalId
-            == resource.data.professionalId
-          || (
-            isAdmin(clinicId)
-            && activeProfessional(
-              clinicId,
-              request.resource.data.professionalId
-            )
-          )
-        )
+        && request.resource.data.professionalId
+          == resource.data.professionalId
         && request.resource.data
           .diff(resource.data)
           .affectedKeys()
@@ -473,12 +537,19 @@ service cloud.firestore {
 
     // AGENDAMENTOS
     match /clinics/{clinicId}/appointments/{appointmentId} {
-      allow get: if administrative(clinicId);
+      allow get: if canManageProfessionalData(
+        clinicId, resource.data.professionalId
+      );
 
-      allow list: if administrative(clinicId)
+      allow list: if canManageProfessionalData(
+          clinicId, resource.data.professionalId
+        )
         && request.query.limit <= 500;
 
-      allow create: if administrative(clinicId)
+      allow create: if canManageProfessionalData(
+          clinicId,
+          request.resource.data.professionalId
+        )
         && validAppointment(request.resource.data)
         && request.resource.data.status == 'scheduled'
         && request.resource.data.createdBy == request.auth.uid
@@ -495,7 +566,12 @@ service cloud.firestore {
           true
         );
 
-      allow update: if administrative(clinicId)
+      allow update: if canManageProfessionalData(
+          clinicId, resource.data.professionalId
+        )
+        && canManageProfessionalData(
+          clinicId, request.resource.data.professionalId
+        )
         && validAppointment(request.resource.data)
         && request.resource.data.patientId
           == resource.data.patientId
@@ -571,10 +647,15 @@ service cloud.firestore {
 
     // RESERVAS DE HORÁRIOS
     match /clinics/{clinicId}/bookedSlots/{slotId} {
-      allow get: if administrative(clinicId);
+      allow get: if canManageProfessionalData(
+        clinicId, resource.data.professionalId
+      );
       allow list: if false;
 
-      allow create: if administrative(clinicId)
+      allow create: if canManageProfessionalData(
+          clinicId,
+          request.resource.data.professionalId
+        )
         && validSlot(request.resource.data, slotId)
         && request.resource.data.active == true
         && request.resource.data.createdAt == request.time
@@ -583,7 +664,14 @@ service cloud.firestore {
           clinicId, slotId, request.resource.data
         );
 
-      allow update: if administrative(clinicId)
+      allow update: if canManageProfessionalData(
+          clinicId,
+          resource.data.professionalId
+        )
+        && canManageProfessionalData(
+          clinicId,
+          request.resource.data.professionalId
+        )
         && validSlot(request.resource.data, slotId)
         && request.resource.data.createdAt
           == resource.data.createdAt
@@ -714,8 +802,15 @@ service cloud.firestore {
     match /clinics/{clinicId}/patients/{patientId}/receivables/{chargeId} {
 
       function financeAllowed() {
-        return isAdmin(clinicId)
-          || isAssignedPsychologist(clinicId, patientId);
+        return exists(patientPath(clinicId, patientId))
+          && (
+            canManageProfessionalData(
+              clinicId,
+              get(patientPath(clinicId, patientId))
+                .data.professionalId
+            )
+            || isAssignedPsychologist(clinicId, patientId)
+          );
       }
 
       function chargePath() {
@@ -1035,7 +1130,10 @@ service cloud.firestore {
       }
 
       function canReadDocument(data) {
-        return isAdmin(clinicId)
+        return (
+            isAdmin(clinicId)
+            && canAccessPatient(clinicId, patientId)
+          )
           || (
             isAssignedPsychologist(clinicId, patientId)
             && data.professionalId == myProfessionalId(clinicId)
@@ -1268,7 +1366,17 @@ service cloud.firestore {
         && canReadDocument(resource.data);
 
       allow create: if (
-          isAdmin(clinicId)
+          (
+            isAdmin(clinicId)
+            && canAccessPatient(
+              clinicId,
+              patientId
+            )
+            && hasProfessionalScope(
+              clinicId,
+              request.resource.data.professionalId
+            )
+          )
           || (
             isAssignedPsychologist(clinicId, patientId)
             && request.resource.data.professionalId
@@ -1290,6 +1398,7 @@ service cloud.firestore {
 
       allow update: if (
           isAdmin(clinicId)
+          && canReadDocument(resource.data)
           && resource.data.status in ['approved', 'signed']
           && request.resource.data.status == 'signed'
           && validAdminDrawnSignature(request.resource.data)
@@ -1366,6 +1475,7 @@ service cloud.firestore {
 
         allow create: if (
             isAdmin(clinicId)
+            && canReadDocument(get(documentPath()).data)
             && request.resource.data.documentId == documentId
             && request.resource.data.version is int
             && request.resource.data.snapshot is map
@@ -1394,6 +1504,7 @@ service cloud.firestore {
 
         allow create: if (
             isAdmin(clinicId)
+            && canReadDocument(get(documentPath()).data)
             && request.resource.data.action == 'signed'
             && request.resource.data.version is int
             && request.resource.data.actorUid == request.auth.uid

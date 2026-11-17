@@ -99,20 +99,21 @@ export class ClinicalService {
   async listPatients(): Promise<Patient[]> {
     const member = this.authorizedMember();
 
-    const reference = member.role === 'admin'
-      ? query(
-        this.patientsRef(),
-        limit(100)
-      )
-      : query(
-        this.patientsRef(),
-        where(
-          'professionalId',
-          '==',
-          member.professionalId || '__unassigned__'
-        ),
-        limit(100)
+    if (!member.professionalId) {
+      throw new Error(
+        'O usuário não possui um profissional vinculado.'
       );
+    }
+
+    const reference = query(
+      this.patientsRef(),
+      where(
+        'professionalId',
+        '==',
+        member.professionalId
+      ),
+      limit(100)
+    );
 
     const snapshot = await getDocs(reference);
 

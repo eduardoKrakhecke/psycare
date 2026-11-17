@@ -1,5 +1,5 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import {
   collection,
@@ -9,11 +9,15 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc
+  updateDoc,
+  where
 } from 'firebase/firestore';
 
 import { firestore, firebaseAuth }
   from '../firebase/firebase';
+
+import { MemberService }
+  from '../auth/member.service';
 
 import { environment }
   from '../../../environments/environment';
@@ -27,6 +31,7 @@ import type {
   providedIn: 'root'
 })
 export class PatientService {
+  private readonly members = inject(MemberService);
 
   private readonly path = [
     'clinics',
@@ -35,13 +40,25 @@ export class PatientService {
   ] as const;
 
   async list(): Promise<Patient[]> {
+    const professionalId = this.members.currentMember()?.professionalId;
+
+    if (!professionalId) {
+      throw new Error(
+        'O usuário não possui um profissional vinculado.'
+      );
+    }
+
     const reference = collection(
       firestore,
       ...this.path
     );
 
     const snapshot = await getDocs(
-      query(reference, limit(100))
+      query(
+        reference,
+        where('professionalId', '==', professionalId),
+        limit(100)
+      )
     );
 
     return snapshot.docs
@@ -62,6 +79,15 @@ export class PatientService {
 
     if (!uid) {
       throw new Error('Usuário não autenticado.');
+    }
+
+    if (
+      input.professionalId !==
+      this.members.currentMember()?.professionalId
+    ) {
+      throw new Error(
+        'O paciente deve pertencer ao profissional do usuário.'
+      );
     }
 
     const reference = doc(

@@ -2,7 +2,8 @@
 export type UserRole =
   | 'admin'
   | 'psychologist'
-  | 'receptionist';
+  | 'receptionist'
+  | 'secretary';
 
 export type OperationalRole =
   Exclude<UserRole, 'admin'>;

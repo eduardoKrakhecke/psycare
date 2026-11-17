@@ -57,26 +57,26 @@ export class MainLayout implements OnInit {
 
 
   readonly canAccessFinancial = computed(() =>
-    ['admin', 'psychologist'].includes(
+    ['admin', 'psychologist', 'receptionist', 'secretary'].includes(
       this.memberService.currentMember()?.role ?? ''
     )
   );
 
 
   readonly canManageAppointments = computed(() =>
-    ['admin', 'receptionist'].includes(
+    ['admin', 'receptionist', 'secretary'].includes(
       this.memberService.currentMember()?.role ?? ''
     )
   );
 
   readonly canManagePatients = computed(() =>
-    ['admin', 'receptionist'].includes(
+    ['admin', 'receptionist', 'secretary'].includes(
       this.memberService.currentMember()?.role ?? ''
     )
   );
 
   readonly canViewProfessionals = computed(() =>
-    ['admin', 'receptionist'].includes(
+    ['admin', 'receptionist', 'secretary'].includes(
       this.memberService.currentMember()?.role ?? ''
     )
   );

@@ -1,5 +1,5 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import {
   collection,
@@ -8,10 +8,14 @@ import {
   limit,
   query,
   setDoc,
-  updateDoc
+  updateDoc,
+  where
 } from 'firebase/firestore';
 
-import { firestore } from '../firebase/firebase';
+import {
+  firebaseAuth,
+  firestore
+} from '../firebase/firebase';
 import { environment } from '../../../environments/environment';
 
 import type {
@@ -19,8 +23,13 @@ import type {
   OperationalRole
 } from '../models/member.model';
 
+import { MemberService }
+  from '../auth/member.service';
+
 @Injectable({ providedIn: 'root' })
 export class MemberAdminService {
+  private readonly members = inject(MemberService);
+
   private readonly path = [
     'clinics',
     environment.clinicId,
@@ -28,11 +37,22 @@ export class MemberAdminService {
   ] as const;
 
   async list(): Promise<ClinicMember[]> {
-    const snapshot = await getDocs(
-      query(
-        collection(firestore, ...this.path),
+    const member = this.members.currentMember();
+    const reference = collection(firestore, ...this.path);
+    const membersQuery = member?.professionalId
+      ? query(
+        reference,
+        where(
+          'professionalId',
+          '==',
+          member.professionalId
+        ),
         limit(100)
       )
+      : query(reference, limit(100));
+
+    const snapshot = await getDocs(
+      membersQuery
     );
 
     return snapshot.docs
@@ -62,8 +82,7 @@ export class MemberAdminService {
       name,
       role,
       active: true,
-      professionalId:
-        role === 'psychologist' ? professionalId : ''
+      professionalId
     });
   }
 
@@ -78,8 +97,21 @@ export class MemberAdminService {
     await updateDoc(reference, {
       role,
       active,
-      professionalId:
-        role === 'psychologist' ? professionalId : ''
+      professionalId
+    });
+  }
+
+  async updateOwnerProfessional(
+    professionalId: string
+  ): Promise<void> {
+    const uid = firebaseAuth.currentUser?.uid;
+
+    if (!uid) {
+      throw new Error('Usuário não autenticado.');
+    }
+
+    await updateDoc(doc(firestore, ...this.path, uid), {
+      professionalId
     });
   }
 }

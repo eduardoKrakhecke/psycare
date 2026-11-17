@@ -1,0 +1,315 @@
+
+:host {
+  display: block;
+  color: var(--pc-text);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 750;
+    margin: .2rem 0 .5rem;
+  }
+
+  p:not(.eyebrow) {
+    color: var(--pc-muted);
+    margin: 0;
+  }
+}
+
+.eyebrow {
+  font-size: .75rem;
+  letter-spacing: .1em;
+  font-weight: 750;
+  color: #218476;
+  margin: 0;
+}
+
+.filters-panel,
+.calendar-panel,
+.stat-card {
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: 16px;
+}
+
+.filters-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.3rem;
+  margin-bottom: 1rem;
+
+  .field {
+    flex: 1;
+    max-width: 500px;
+    min-width: 230px;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+
+  label {
+    font-size: .85rem;
+    font-weight: 650;
+  }
+}
+
+.form-control,
+.form-select {
+  background: var(--pc-surface);
+  color: var(--pc-text);
+  border-color: var(--pc-border);
+
+  &:focus {
+    background: var(--pc-surface);
+    color: var(--pc-text);
+    border-color: #218476;
+    box-shadow: 0 0 0 .2rem rgba(33, 132, 118, .14);
+  }
+}
+
+.filter-info {
+  color: var(--pc-muted);
+  font-size: .85rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.statistics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+
+  span {
+    color: var(--pc-muted);
+    font-size: .8rem;
+  }
+
+  strong {
+    font-size: 1.6rem;
+    color: var(--pc-text);
+  }
+}
+
+.calendar-panel {
+  padding: 1.4rem;
+  overflow-x: auto;
+}
+
+.loading-message {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  color: var(--pc-muted);
+  font-size: .85rem;
+  margin-bottom: .8rem;
+}
+
+.empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--pc-muted);
+}
+
+.calendar-legend {
+  display: flex;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .8rem;
+    color: var(--pc-muted);
+  }
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+
+  &.scheduled { background: #d99a25; }
+  &.confirmed { background: #218476; }
+  &.completed { background: #3478b8; }
+  &.no-show { background: #9b557b; }
+}
+
+:host ::ng-deep {
+  .fc {
+    color: var(--pc-text);
+    --fc-border-color: var(--pc-border);
+    --fc-page-bg-color: var(--pc-surface);
+    --fc-neutral-bg-color: var(--pc-surface);
+    --fc-today-bg-color: rgba(33, 132, 118, .08);
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 1.2rem;
+    font-weight: 750;
+  }
+
+  .fc .fc-timegrid-slot,
+  .fc .fc-daygrid-day {
+    cursor: pointer;
+  }
+
+  .fc .fc-event {
+    cursor: pointer;
+    border-radius: 5px;
+    padding: 2px 4px;
+    font-size: .8rem;
+  }
+
+  .fc .fc-button {
+    font-size: .8rem;
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(12, 19, 28, .62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.appointment-dialog {
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 18px;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, .25);
+}
+
+.dialog-header,
+.dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.3rem 1.5rem;
+}
+
+.dialog-header {
+  border-bottom: 1px solid var(--pc-border);
+
+  h2 {
+    margin: .3rem 0 0;
+    font-size: 1.3rem;
+    font-weight: 750;
+  }
+}
+
+.dialog-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.dialog-footer {
+  border-top: 1px solid var(--pc-border);
+  justify-content: flex-end;
+}
+
+.close-button {
+  border: 0;
+  background: transparent;
+  color: var(--pc-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.duration-info {
+  padding: .85rem;
+  background: rgba(33, 132, 118, .08);
+  border-radius: 10px;
+  color: var(--pc-muted);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--pc-border);
+  padding-bottom: .8rem;
+
+  span {
+    color: var(--pc-muted);
+    font-size: .85rem;
+  }
+
+  strong {
+    text-align: right;
+    font-size: .9rem;
+  }
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-top: .5rem;
+}
+
+@media (max-width: 768px) {
+  .statistics,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-panel {
+    padding: .75rem;
+  }
+
+  :host ::ng-deep .fc .fc-toolbar {
+    flex-direction: column;
+    gap: .8rem;
+  }
+
+  .dialog-body,
+  .dialog-header,
+  .dialog-footer {
+    padding: 1rem;
+  }
+}

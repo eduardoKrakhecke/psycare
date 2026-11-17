@@ -1,0 +1,374 @@
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">CONSULTAS</p>
+    <h1>Agenda de atendimentos</h1>
+    <p>
+      Selecione um psicólogo e clique no calendário
+      para agendar uma consulta.
+    </p>
+  </div>
+
+  <button
+    type="button"
+    class="btn btn-outline-secondary"
+    (click)="reloadAppointments()"
+    [disabled]="loading()"
+  >
+    <i class="pi pi-refresh"></i>
+    Atualizar agenda
+  </button>
+</section>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">
+    <i class="pi pi-exclamation-circle"></i>
+    {{ error() }}
+  </div>
+}
+
+@if (success()) {
+  <div class="alert alert-success" role="status">
+    <i class="pi pi-check-circle"></i>
+    {{ success() }}
+  </div>
+}
+
+<section class="filters-panel">
+  <div class="field">
+    <label for="professionalFilter">Psicólogo responsável</label>
+
+    <select
+      id="professionalFilter"
+      class="form-select"
+      [ngModel]="selectedProfessionalId()"
+      (ngModelChange)="changeProfessional($event)"
+    >
+      <option value="">Selecione um profissional</option>
+
+      @for (
+          professional of activeProfessionals();
+        track professional.id
+        ) {
+        <option [value]="professional.id">
+          {{ professional.fullName }} — {{ professional.crp }}
+        </option>
+      }
+    </select>
+  </div>
+
+  <div class="filter-info">
+    <i class="pi pi-clock"></i>
+    Sessões de 60 minutos • 08h às 18h
+  </div>
+</section>
+
+<section class="statistics">
+  <article class="stat-card">
+    <span>Consultas na visualização</span>
+    <strong>{{ visibleAppointments().length }}</strong>
+  </article>
+
+  <article class="stat-card">
+    <span>Aguardando confirmação</span>
+    <strong>{{ totalScheduled() }}</strong>
+  </article>
+
+  <article class="stat-card">
+    <span>Confirmadas</span>
+    <strong>{{ totalConfirmed() }}</strong>
+  </article>
+</section>
+
+<section class="calendar-panel">
+  @if (loading()) {
+    <div class="loading-message">
+      <i class="pi pi-spin pi-spinner"></i>
+      Atualizando agendamentos...
+    </div>
+  }
+
+  @if (!selectedProfessionalId()) {
+    <p class="empty">
+      Selecione um psicólogo para começar a utilizar a agenda.
+    </p>
+  }
+
+  <full-calendar [options]="calendarOptions()" />
+</section>
+
+<div class="calendar-legend">
+  <span>
+    <i class="legend-dot scheduled"></i>
+    Agendada
+  </span>
+
+  <span>
+    <i class="legend-dot confirmed"></i>
+    Confirmada
+  </span>
+
+  <span>
+    <i class="legend-dot completed"></i>
+    Realizada
+  </span>
+
+  <span>
+    <i class="legend-dot no-show"></i>
+    Falta
+  </span>
+</div>
+
+@if (editorMode()) {
+  <div class="modal-overlay">
+    <section
+      class="appointment-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="appointment-dialog-title"
+    >
+      <header class="dialog-header">
+        <div>
+          <p class="eyebrow">AGENDAMENTO</p>
+          <h2 id="appointment-dialog-title">
+            {{
+              editorMode() === 'create'
+                ? 'Nova consulta'
+                : 'Reagendar consulta'
+            }}
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          class="close-button"
+          aria-label="Fechar"
+          (click)="closeEditor()"
+          [disabled]="saving()"
+        >
+          <i class="pi pi-times"></i>
+        </button>
+      </header>
+
+      <form (ngSubmit)="save()" #appointmentForm="ngForm">
+        <div class="dialog-body">
+          <div class="field">
+            <label>Psicólogo</label>
+
+            <input
+              class="form-control"
+              type="text"
+              [value]="selectedProfessional()?.fullName ?? ''"
+              disabled
+            />
+          </div>
+
+          @if (editorMode() === 'create') {
+            <div class="field">
+              <label for="appointmentPatient">Paciente *</label>
+
+              <select
+                id="appointmentPatient"
+                name="appointmentPatient"
+                class="form-select"
+                required
+                [(ngModel)]="draftPatientId"
+              >
+                <option value="">Selecione o paciente</option>
+
+                @for (
+                    patient of availablePatients();
+                  track patient.id
+                  ) {
+                  <option [value]="patient.id">
+                    {{ patient.fullName }}
+                  </option>
+                }
+              </select>
+            </div>
+          } @else {
+            <div class="field">
+              <label>Paciente</label>
+
+              <input
+                type="text"
+                class="form-control"
+                [value]="patientName(viewing()!.patientId)"
+                disabled
+              />
+            </div>
+          }
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="appointmentDate">Data *</label>
+
+              <input
+                id="appointmentDate"
+                name="appointmentDate"
+                class="form-control"
+                type="date"
+                required
+                [(ngModel)]="draftDate"
+              />
+            </div>
+
+            <div class="field">
+              <label for="appointmentTime">Horário *</label>
+
+              <select
+                id="appointmentTime"
+                name="appointmentTime"
+                class="form-select"
+                required
+                [(ngModel)]="draftTime"
+              >
+                @for (time of timeOptions; track time) {
+                  <option [value]="time">
+                    {{ time }}
+                  </option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="duration-info">
+            <i class="pi pi-info-circle"></i>
+            O atendimento terá duração de 60 minutos.
+            O sistema verificará a disponibilidade antes de salvar.
+          </div>
+        </div>
+
+        <footer class="dialog-footer">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            (click)="closeEditor()"
+            [disabled]="saving()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="saving() || appointmentForm.invalid"
+          >
+            <i class="pi pi-check"></i>
+            {{ saving() ? 'Salvando...' : 'Salvar consulta' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (viewing() && !editorMode()) {
+  <div class="modal-overlay">
+    <section
+      class="appointment-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="details-title"
+    >
+      <header class="dialog-header">
+        <div>
+          <p class="eyebrow">ATENDIMENTO</p>
+          <h2 id="details-title">Detalhes da consulta</h2>
+        </div>
+
+        <button
+          type="button"
+          class="close-button"
+          aria-label="Fechar"
+          (click)="closeEditor()"
+          [disabled]="saving()"
+        >
+          <i class="pi pi-times"></i>
+        </button>
+      </header>
+
+      <div class="dialog-body">
+        <div class="detail-row">
+          <span>Paciente</span>
+          <strong>{{ patientName(viewing()!.patientId) }}</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Psicólogo</span>
+          <strong>{{ selectedProfessional()?.fullName }}</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Data</span>
+          <strong>{{ formatDate(viewing()!.date) }}</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Horário</span>
+          <strong>{{ viewing()!.startTime }}</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Status</span>
+          <strong>{{ statuses[viewing()!.status] }}</strong>
+        </div>
+
+        @if (canModify(viewing()!)) {
+          <div class="detail-actions">
+            @if (viewing()!.status === 'scheduled') {
+              <button
+                type="button"
+                class="btn btn-success"
+                (click)="confirmAppointment()"
+                [disabled]="saving()"
+              >
+                <i class="pi pi-check-circle"></i>
+                Confirmar presença
+              </button>
+            }
+
+            @if (viewing()!.status === 'confirmed') {
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="finishAppointment('completed')"
+                [disabled]="saving()"
+              >
+                Marcar como realizada
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="finishAppointment('no_show')"
+                [disabled]="saving()"
+              >
+                Registrar falta
+              </button>
+            }
+
+            <button
+              type="button"
+              class="btn btn-outline-primary"
+              (click)="startReschedule()"
+              [disabled]="saving()"
+            >
+              <i class="pi pi-calendar"></i>
+              Reagendar
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-outline-danger"
+              (click)="cancelAppointment()"
+              [disabled]="saving()"
+            >
+              Cancelar consulta
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}

@@ -18,6 +18,26 @@
       Painel principal
     </a>
 
+    @if (canManageAppointments()) {
+      <a
+        routerLink="/appointments"
+        routerLinkActive="selected"
+      >
+        <i class="pi pi-calendar-clock"></i>
+        Agenda
+      </a>
+    }
+
+    @if (canManagePatients()) {
+      <a
+        routerLink="/patients"
+        routerLinkActive="selected"
+      >
+        <i class="pi pi-users"></i>
+        Pacientes
+      </a>
+    }
+
     @if (canViewProfessionals()) {
       <a
         routerLink="/professionals"
@@ -39,10 +59,10 @@
     }
 
     <div class="upcoming">
-      <i class="pi pi-calendar-clock"></i>
+      <i class="pi pi-file-edit"></i>
       <span>
-        Pacientes, agenda e atendimentos serão
-        implementados nas próximas etapas.
+        Prontuários e CID serão adicionados
+        na próxima etapa.
       </span>
     </div>
 
@@ -64,9 +84,7 @@
           (click)="toggleTheme()"
           aria-label="Alternar tema"
         >
-          <i
-            [class]="dark() ? 'pi pi-sun' : 'pi pi-moon'"
-          ></i>
+          <i [class]="dark() ? 'pi pi-sun' : 'pi pi-moon'"></i>
         </button>
 
         <span class="user-email">

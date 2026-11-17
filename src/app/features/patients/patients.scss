@@ -1,0 +1,295 @@
+
+:host {
+  display: block;
+  color: var(--pc-text);
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 750;
+    margin: .15rem 0 .5rem;
+  }
+
+  p:not(.eyebrow) {
+    color: var(--pc-muted);
+    margin: 0;
+  }
+}
+
+.eyebrow {
+  color: #218476;
+  font-size: .75rem;
+  font-weight: 750;
+  letter-spacing: .1em;
+  margin: 0;
+}
+
+.statistics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.3rem;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: 14px;
+
+  > i {
+    color: #218476;
+    font-size: 1.5rem;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+  }
+
+  span {
+    color: var(--pc-muted);
+    font-size: .8rem;
+  }
+
+  strong {
+    color: var(--pc-text);
+    font-size: 1.5rem;
+  }
+}
+
+.panel {
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.patients-content {
+  display: flex;
+  flex-direction: column;
+
+  .editor {
+    order: -1;
+  }
+}
+
+.toolbar {
+  padding: 1.3rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex: 1;
+  min-width: 240px;
+
+  i {
+    color: var(--pc-muted);
+  }
+}
+
+.form-control,
+.form-select {
+  background-color: var(--pc-surface);
+  color: var(--pc-text);
+  border-color: var(--pc-border);
+
+  &:focus {
+    background-color: var(--pc-surface);
+    color: var(--pc-text);
+    border-color: #218476;
+    box-shadow: 0 0 0 .2rem rgba(33, 132, 118, .12);
+  }
+}
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--pc-text);
+  --bs-table-border-color: var(--pc-border);
+
+  th,
+  td {
+    padding: 1rem;
+    vertical-align: middle;
+  }
+
+  th {
+    font-size: .75rem;
+    color: var(--pc-muted);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  td {
+    font-size: .88rem;
+
+    strong {
+      display: block;
+    }
+
+    small {
+      display: block;
+      color: var(--pc-muted);
+      margin-top: .3rem;
+    }
+  }
+}
+
+.status {
+  display: inline-block;
+  padding: .3rem .7rem;
+  border-radius: 100px;
+  color: #187341;
+  background: #e1f6e9;
+  font-size: .78rem;
+  font-weight: 700;
+
+  &.inactive {
+    color: #9f3939;
+    background: #f8e8e8;
+  }
+}
+
+.actions {
+  white-space: nowrap;
+
+  button {
+    margin: .15rem;
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .7rem;
+  padding: 2.5rem;
+  color: var(--pc-muted);
+
+  i {
+    font-size: 1.5rem;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.footnote {
+  color: var(--pc-muted);
+  font-size: .75rem;
+  padding: .8rem 1.3rem;
+  margin: 0;
+}
+
+.editor {
+  padding: 1.6rem;
+
+  h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 1.8rem 0 1rem;
+    padding-bottom: .6rem;
+    border-bottom: 1px solid var(--pc-border);
+  }
+}
+
+.editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h2 {
+    font-size: 1.3rem;
+    font-weight: 750;
+    margin: .3rem 0;
+  }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+
+  label {
+    font-size: .85rem;
+    font-weight: 650;
+  }
+
+  &.wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.helper {
+  color: var(--pc-muted);
+  font-size: .78rem;
+  margin-top: .7rem;
+}
+
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: 1.5rem;
+  cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .75rem;
+  margin-top: 2rem;
+  padding-top: 1.3rem;
+  border-top: 1px solid var(--pc-border);
+}
+
+@media (max-width: 800px) {
+  .statistics {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field.wide {
+    grid-column: auto;
+  }
+
+  .page-header > button {
+    width: 100%;
+  }
+
+  .editor {
+    padding: 1rem;
+  }
+}

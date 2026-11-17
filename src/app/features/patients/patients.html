@@ -1,0 +1,404 @@
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">CADASTROS</p>
+    <h1>Pacientes</h1>
+    <p>
+      Gerencie os dados cadastrais dos pacientes da clínica.
+    </p>
+  </div>
+
+  <button
+    type="button"
+    class="btn btn-primary"
+    (click)="openNew()"
+    [disabled]="loading() || saving()"
+  >
+    <i class="pi pi-plus"></i>
+    Novo paciente
+  </button>
+</section>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">
+    {{ error() }}
+  </div>
+}
+
+@if (success()) {
+  <div class="alert alert-success" role="status">
+    {{ success() }}
+  </div>
+}
+
+<div class="statistics">
+  <article class="stat-card">
+    <i class="pi pi-users"></i>
+    <div>
+      <span>Total carregado</span>
+      <strong>{{ patients().length }}</strong>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <i class="pi pi-check-circle"></i>
+    <div>
+      <span>Cadastros ativos</span>
+      <strong>{{ totalActive() }}</strong>
+    </div>
+  </article>
+
+  <article class="stat-card">
+    <i class="pi pi-user-plus"></i>
+    <div>
+      <span>Psicólogos ativos</span>
+      <strong>{{ availableProfessionals().length }}</strong>
+    </div>
+  </article>
+</div>
+
+<div class="patients-content">
+<section class="panel">
+  <div class="toolbar">
+    <div class="search-box">
+      <i class="pi pi-search"></i>
+
+      <input
+        type="search"
+        class="form-control"
+        aria-label="Pesquisar paciente"
+        placeholder="Pesquisar por nome ou CPF"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+    </div>
+
+    <button
+      class="btn btn-outline-secondary"
+      type="button"
+      (click)="reload()"
+      [disabled]="loading()"
+    >
+      <i class="pi pi-refresh"></i>
+      Atualizar
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="empty">
+      <i class="pi pi-spin pi-spinner"></i>
+      Carregando pacientes...
+    </div>
+  } @else if (filtered().length === 0) {
+    <div class="empty">
+      <i class="pi pi-users"></i>
+      <p>Nenhum paciente encontrado.</p>
+    </div>
+  } @else {
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+        <tr>
+          <th>Paciente</th>
+          <th>Nascimento</th>
+          <th>Contato</th>
+          <th>Psicólogo responsável</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+        </thead>
+
+        <tbody>
+          @for (patient of filtered(); track patient.id) {
+            <tr>
+              <td>
+                <strong>{{ patient.fullName }}</strong>
+                <small>Cadastro administrativo</small>
+              </td>
+
+              <td>
+                {{ formatBirthDate(patient.birthDate) }}
+              </td>
+
+              <td>
+                <span>{{ patient.phone || '—' }}</span>
+                <small>{{ patient.email }}</small>
+              </td>
+
+              <td>
+                {{ professionalName(patient.professionalId) }}
+              </td>
+
+              <td>
+                <span
+                  class="status"
+                  [class.inactive]="!patient.active"
+                >
+                  {{ patient.active ? 'Ativo' : 'Inativo' }}
+                </span>
+              </td>
+
+              <td class="actions">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  (click)="edit(patient)"
+                  [disabled]="saving()"
+                >
+                  Editar
+                </button>
+
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary"
+                  (click)="toggleActive(patient)"
+                  [disabled]="saving()"
+                >
+                  {{
+                    patient.active
+                      ? 'Desativar'
+                      : 'Reativar'
+                  }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <p class="footnote">
+    A consulta carrega até 100 registros nesta versão.
+    Diagnósticos e prontuários não são exibidos aqui.
+  </p>
+</section>
+
+@if (editorOpen() && canManage()) {
+  <section
+    class="panel editor"
+    aria-label="Formulário do paciente"
+  >
+    <div class="editor-heading">
+      <div>
+        <p class="eyebrow">DADOS CADASTRAIS</p>
+
+        <h2>
+          {{
+            editingPatient()
+              ? 'Editar paciente'
+              : 'Cadastrar paciente'
+          }}
+        </h2>
+      </div>
+
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        (click)="close()"
+        [disabled]="saving()"
+      >
+        Fechar
+      </button>
+    </div>
+
+    <form
+      (ngSubmit)="submit()"
+      #patientForm="ngForm"
+    >
+      <h3>Informações pessoais</h3>
+
+      <div class="form-grid">
+        <div class="field wide">
+          <label for="fullName">Nome completo *</label>
+
+          <input
+            id="fullName"
+            name="fullName"
+            class="form-control"
+            type="text"
+            required
+            minlength="3"
+            maxlength="120"
+            autocomplete="name"
+            [(ngModel)]="form.fullName"
+          />
+        </div>
+
+        <div class="field">
+          <label for="birthDate">Data de nascimento *</label>
+
+          <input
+            id="birthDate"
+            name="birthDate"
+            class="form-control"
+            type="date"
+            required
+            min="1900-01-01"
+            [max]="today"
+            [(ngModel)]="form.birthDate"
+          />
+        </div>
+
+        <div class="field">
+          <label for="cpf">CPF (opcional)</label>
+
+          <input
+            id="cpf"
+            name="cpf"
+            class="form-control"
+            type="text"
+            inputmode="numeric"
+            maxlength="14"
+            placeholder="000.000.000-00"
+            [(ngModel)]="form.cpf"
+          />
+        </div>
+
+        <div class="field">
+          <label for="phone">Telefone</label>
+
+          <input
+            id="phone"
+            name="phone"
+            class="form-control"
+            type="tel"
+            maxlength="30"
+            autocomplete="tel"
+            placeholder="(00) 00000-0000"
+            [(ngModel)]="form.phone"
+          />
+        </div>
+
+        <div class="field">
+          <label for="email">E-mail</label>
+
+          <input
+            id="email"
+            name="email"
+            class="form-control"
+            type="email"
+            maxlength="160"
+            autocomplete="email"
+            [(ngModel)]="form.email"
+          />
+        </div>
+      </div>
+
+      <p class="helper">
+        Informe pelo menos um telefone ou e-mail.
+      </p>
+
+      <h3>Contato de referência (opcional)</h3>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="contactName">Nome do contato</label>
+
+          <input
+            id="contactName"
+            name="contactName"
+            class="form-control"
+            maxlength="120"
+            [(ngModel)]="form.contactName"
+          />
+        </div>
+
+        <div class="field">
+          <label for="contactPhone">Telefone do contato</label>
+
+          <input
+            id="contactPhone"
+            name="contactPhone"
+            class="form-control"
+            type="tel"
+            maxlength="30"
+            [(ngModel)]="form.contactPhone"
+          />
+        </div>
+      </div>
+
+      <h3>Vínculo profissional</h3>
+
+      <div class="form-grid">
+        <div class="field wide">
+          <label for="professionalId">
+            Psicólogo responsável *
+          </label>
+
+          <select
+            id="professionalId"
+            name="professionalId"
+            class="form-select"
+            required
+            [(ngModel)]="form.professionalId"
+          >
+            <option value="">
+              Selecione um profissional
+            </option>
+
+            @for (
+                professional of professionals();
+              track professional.id
+              ) {
+              <option
+                [value]="professional.id"
+                [disabled]="
+                  !professional.active &&
+                  form.professionalId !== professional.id
+                "
+              >
+                {{ professional.fullName }}
+                — {{ professional.crp }}
+                {{
+                  professional.active
+                    ? ''
+                    : '(inativo)'
+                }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="form-check-label check-label">
+            <input
+              class="form-check-input"
+              name="active"
+              type="checkbox"
+              [(ngModel)]="form.active"
+            />
+
+            Cadastro ativo
+          </label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          (click)="close()"
+          [disabled]="saving()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="saving() || patientForm.invalid"
+        >
+          <i class="pi pi-check"></i>
+
+          {{
+            saving()
+              ? 'Salvando...'
+              : 'Salvar paciente'
+          }}
+        </button>
+      </div>
+    </form>
+  </section>
+}
+</div>

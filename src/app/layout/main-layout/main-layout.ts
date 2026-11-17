@@ -35,8 +35,20 @@ export class MainLayout {
 
   readonly dark = signal(false);
 
-  readonly isAdmin = computed(
-    () => this.memberService.currentMember()?.role === 'admin'
+  readonly isAdmin = computed(() =>
+    this.memberService.currentMember()?.role === 'admin'
+  );
+
+  readonly canManageAppointments = computed(() =>
+    ['admin', 'receptionist'].includes(
+      this.memberService.currentMember()?.role ?? ''
+    )
+  );
+
+  readonly canManagePatients = computed(() =>
+    ['admin', 'receptionist'].includes(
+      this.memberService.currentMember()?.role ?? ''
+    )
   );
 
   readonly canViewProfessionals = computed(() =>
@@ -56,9 +68,7 @@ export class MainLayout {
 
   async logout(): Promise<void> {
     await this.authService.logout();
-
     this.memberService.clear();
-
     await this.router.navigateByUrl('/login');
   }
 }

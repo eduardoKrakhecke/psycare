@@ -1,5 +1,6 @@
 
 import { Routes } from '@angular/router';
+
 import { authGuard } from './core/auth/auth.guard';
 import { roleGuard } from './core/auth/role.guard';
 
@@ -31,6 +32,17 @@ export const routes: Routes = [
             .then(m => m.Dashboard)
       },
       {
+        path: 'patients',
+        title: 'Pacientes | PsyCare',
+        canActivate: [roleGuard],
+        data: {
+          roles: ['admin', 'receptionist']
+        },
+        loadComponent: () =>
+          import('./features/patients/patients')
+            .then(m => m.Patients)
+      },
+      {
         path: 'professionals',
         title: 'Profissionais | PsyCare',
         canActivate: [roleGuard],
@@ -42,8 +54,19 @@ export const routes: Routes = [
             .then(m => m.Professionals)
       },
       {
+        path: 'appointments',
+        title: 'Agenda | PsyCare',
+        canActivate: [roleGuard],
+        data: {
+          roles: ['admin', 'receptionist']
+        },
+        loadComponent: () =>
+          import('./features/appointments/appointments')
+            .then(m => m.Appointments)
+      },
+      {
         path: 'members',
-        title: 'Acessos | PsyCare',
+        title: 'Usuários e acessos | PsyCare',
         canActivate: [roleGuard],
         data: {
           roles: ['admin']

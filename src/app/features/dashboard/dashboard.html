@@ -8,35 +8,6 @@
   </p>
 </section>
 
-<section class="cards" aria-label="Modulos da clinica">
-  <article class="stat-card">
-    <i class="pi pi-users"></i>
-    <h2>Pacientes</h2>
-
-    <p>
-      Consulte os pacientes cadastrados e seus dados clinicos.
-    </p>
-  </article>
-
-  <article class="stat-card">
-    <i class="pi pi-calendar"></i>
-    <h2>Agenda</h2>
-
-    <p>
-      Visualize os proximos atendimentos agendados.
-    </p>
-  </article>
-
-  <article class="stat-card">
-    <i class="pi pi-id-card"></i>
-    <h2>Profissionais</h2>
-
-    <p>
-      Consulte os psicologos cadastrados na clinica.
-    </p>
-  </article>
-</section>
-
 @if (agendaAvailable()) {
   <section class="scheduled-panel" aria-labelledby="scheduled-title">
     <div class="panel-heading">
@@ -92,9 +63,6 @@
             </div>
 
             <div class="scheduled-patient">
-              <span class="patient-avatar">
-                {{ item.patient.fullName.charAt(0).toUpperCase() }}
-              </span>
 
               <div>
                 <strong>{{ item.patient.fullName }}</strong>

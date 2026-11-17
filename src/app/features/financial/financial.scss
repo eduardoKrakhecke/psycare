@@ -1,0 +1,462 @@
+
+:host {
+  display: block;
+  color: var(--pc-text);
+}
+
+.eyebrow {
+  color: #218476;
+  font-size: .73rem;
+  font-weight: 750;
+  letter-spacing: .1em;
+  margin: 0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 750;
+    margin: .25rem 0 .5rem;
+  }
+
+  p:not(.eyebrow) {
+    color: var(--pc-muted);
+    margin: 0;
+  }
+}
+
+.access-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  color: #218476;
+  background: rgba(33, 132, 118, .1);
+  border-radius: 10px;
+  padding: .6rem .9rem;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.financial-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card,
+.panel {
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: 15px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  padding: 1.2rem;
+
+  span {
+    color: var(--pc-muted);
+    font-size: .81rem;
+  }
+
+  strong {
+    font-size: 1.4rem;
+    font-weight: 750;
+    overflow-wrap: anywhere;
+  }
+}
+
+.stat-icon {
+  font-size: 1.3rem;
+  color: #218476;
+
+  &.success { color: #28a56a; }
+  &.danger { color: #cf5960; }
+  &.warning { color: #cc942a; }
+}
+
+.financial-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: start;
+  gap: 1.2rem;
+}
+
+.panel {
+  overflow: hidden;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.1rem 1.2rem;
+  border-bottom: 1px solid var(--pc-border);
+
+  h2 {
+    font-size: 1.04rem;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  p,
+  span {
+    color: var(--pc-muted);
+    font-size: .82rem;
+    margin: .3rem 0 0;
+  }
+}
+
+.search-area {
+  padding: 1rem;
+}
+
+.patient-list {
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.patient-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .9rem 1rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--pc-border);
+  color: var(--pc-text);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &.selected {
+    background: rgba(33, 132, 118, .1);
+  }
+
+  strong,
+  small {
+    display: block;
+  }
+
+  strong {
+    font-size: .85rem;
+  }
+
+  small {
+    margin-top: .3rem;
+    font-size: .75rem;
+  }
+}
+
+.patient-avatar {
+  width: 37px;
+  height: 37px;
+  flex: 0 0 37px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(33, 132, 118, .12);
+  color: #218476;
+}
+
+.patient-info {
+  min-width: 0;
+}
+
+.financial-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 0;
+}
+
+.patient-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.3rem;
+
+  h2 {
+    font-size: 1.25rem;
+    margin: .4rem 0;
+  }
+
+  p:not(.eyebrow) {
+    color: var(--pc-muted);
+    font-size: .85rem;
+    margin: 0;
+  }
+}
+
+.table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--pc-text);
+  --bs-table-border-color: var(--pc-border);
+
+  td, th {
+    padding: .9rem 1rem;
+    vertical-align: middle;
+  }
+
+  th {
+    font-size: .73rem;
+    color: var(--pc-muted);
+    white-space: nowrap;
+  }
+
+  td {
+    font-size: .85rem;
+  }
+
+  .selected-row {
+    --bs-table-bg: rgba(33, 132, 118, .08);
+  }
+}
+
+.table-actions {
+  display: flex;
+  gap: .4rem;
+}
+
+.status {
+  display: inline-block;
+  padding: .3rem .65rem;
+  border-radius: 50px;
+  font-size: .74rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.paid {
+    background: #dff5e8;
+    color: #1c7443;
+  }
+
+  &.overdue {
+    background: #fce3e3;
+    color: #a03232;
+  }
+
+  &.partial {
+    background: #fff0d4;
+    color: #906100;
+  }
+
+  &.open {
+    background: #e5efff;
+    color: #315fa2;
+  }
+
+  &.cancelled {
+    background: #ececec;
+    color: #666;
+  }
+}
+
+.payment-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .8rem;
+  padding: 1.2rem;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding: .9rem;
+    border: 1px solid var(--pc-border);
+    border-radius: 10px;
+  }
+
+  span {
+    color: var(--pc-muted);
+    font-size: .76rem;
+  }
+
+  strong {
+    font-size: 1.05rem;
+  }
+}
+
+.payment-note {
+  display: block;
+  color: var(--pc-muted);
+  margin-top: .3rem;
+  overflow-wrap: anywhere;
+}
+
+.history-section {
+  padding: 1.3rem;
+  border-top: 1px solid var(--pc-border);
+
+  h3 {
+    font-size: 1rem;
+    margin: 0 0 1rem;
+  }
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border: 1px solid var(--pc-border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: .7rem;
+
+  small {
+    display: block;
+    margin-top: .4rem;
+    color: var(--pc-muted);
+    overflow-wrap: anywhere;
+  }
+}
+
+.history-metadata {
+  text-align: right;
+}
+
+.empty,
+.empty-state {
+  text-align: center;
+  padding: 2.3rem 1rem;
+  color: var(--pc-muted);
+}
+
+.empty-state {
+  i {
+    font-size: 2rem;
+    color: #218476;
+  }
+
+  h2 {
+    margin: 1rem 0;
+    font-size: 1.15rem;
+    color: var(--pc-text);
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 18, 28, .7);
+  padding: 1rem;
+}
+
+.financial-dialog {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: 16px;
+}
+
+.dialog-heading,
+.dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem;
+}
+
+.dialog-heading {
+  border-bottom: 1px solid var(--pc-border);
+
+  h2 {
+    font-size: 1.15rem;
+    margin: 0;
+  }
+}
+
+.dialog-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--pc-border);
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.2rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+
+  label {
+    font-size: .85rem;
+    font-weight: 650;
+  }
+}
+
+.form-control,
+.form-select {
+  background: var(--pc-surface);
+  color: var(--pc-text);
+  border-color: var(--pc-border);
+}
+
+.edit-warning {
+  color: var(--pc-muted);
+  background: rgba(33, 132, 118, .08);
+  border-radius: 9px;
+  padding: .85rem;
+  margin: 0;
+  font-size: .82rem;
+}
+
+@media (max-width: 1100px) {
+  .financial-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .financial-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-list {
+    max-height: 260px;
+  }
+}
+
+@media (max-width: 600px) {
+  .financial-stats,
+  .payment-summary,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-metadata {
+    text-align: left;
+  }
+}

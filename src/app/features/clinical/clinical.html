@@ -1,0 +1,684 @@
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">GESTÃO CLÍNICA</p>
+    <h1>Prontuários e avaliações</h1>
+    <p>
+      Acompanhamento psicológico, avaliações e diagnósticos.
+    </p>
+  </div>
+
+  @if (isAdmin()) {
+    <span class="access-badge">
+      <i class="pi pi-shield"></i>
+      Administrador — acesso completo
+    </span>
+  } @else {
+    <span class="access-badge">
+      <i class="pi pi-lock"></i>
+      Psicólogo — acesso restrito
+    </span>
+  }
+</section>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">
+    <i class="pi pi-exclamation-triangle me-2"></i>
+    {{ error() }}
+  </div>
+}
+
+@if (success()) {
+  <div class="alert alert-success" role="status">
+    <i class="pi pi-check-circle me-2"></i>
+    {{ success() }}
+  </div>
+}
+
+<div class="clinical-layout">
+  <aside class="panel patients-panel">
+    <header class="panel-header">
+      <h2>
+        {{ isAdmin() ? 'Todos os pacientes' : 'Meus pacientes' }}
+      </h2>
+
+      <span>{{ patients().length }}</span>
+    </header>
+
+    <div class="patient-search">
+      <input
+        class="form-control"
+        type="search"
+        aria-label="Pesquisar pacientes"
+        placeholder="Pesquisar por nome"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+    </div>
+
+    @if (loading()) {
+      <p class="empty">Carregando pacientes...</p>
+    } @else if (filteredPatients().length === 0) {
+      <p class="empty">
+        Nenhum paciente encontrado.
+      </p>
+    } @else {
+      <div class="patient-list">
+        @for (patient of filteredPatients(); track patient.id) {
+          <button
+            type="button"
+            class="patient-item"
+            [class.selected]="
+              selectedPatientId() === patient.id
+            "
+            [disabled]="saving()"
+            (click)="selectPatient(patient.id)"
+          >
+            <div class="avatar">
+              <i class="pi pi-user"></i>
+            </div>
+
+            <div class="patient-info">
+              <strong>{{ patient.fullName }}</strong>
+              <small>
+                {{ patient.active ? 'Ativo' : 'Inativo' }}
+              </small>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </aside>
+
+  <main class="clinical-content">
+    @if (!selectedPatient()) {
+      <section class="panel empty-state">
+        <i class="pi pi-file-edit"></i>
+        <h2>Selecione um paciente</h2>
+        <p>
+          Escolha um paciente para visualizar os registros
+          clínicos, avaliações e diagnósticos.
+        </p>
+      </section>
+    } @else {
+      <section class="panel patient-summary">
+        <div>
+          <p class="eyebrow">PACIENTE SELECIONADO</p>
+          <h2>{{ selectedPatient()!.fullName }}</h2>
+          <p>
+            Nascimento:
+            {{ formatDate(selectedPatient()!.birthDate) }}
+          </p>
+        </div>
+
+        <div class="privacy-label">
+          <i class="pi pi-lock"></i>
+          Dados clínicos
+        </div>
+      </section>
+
+      @if (!selectedPatient()!.active) {
+        <div class="alert alert-warning">
+          O cadastro está inativo. Novos registros
+          clínicos estão bloqueados.
+        </div>
+      }
+
+      <section class="panel records-panel">
+        <nav class="tabs" aria-label="Informações clínicas">
+          <button
+            type="button"
+            [class.active]="tab() === 'records'"
+            (click)="tab.set('records')"
+          >
+            <i class="pi pi-file-edit"></i>
+            Evoluções
+            <span>{{ records().length }}</span>
+          </button>
+
+          <button
+            type="button"
+            [class.active]="tab() === 'assessments'"
+            (click)="tab.set('assessments')"
+          >
+            <i class="pi pi-clipboard"></i>
+            Avaliações
+            <span>{{ assessments().length }}</span>
+          </button>
+
+          <button
+            type="button"
+            [class.active]="tab() === 'diagnoses'"
+            (click)="tab.set('diagnoses')"
+          >
+            <i class="pi pi-book"></i>
+            Diagnósticos
+            <span>{{ diagnoses().length }}</span>
+          </button>
+        </nav>
+
+        @if (loadingDetails()) {
+          <div class="empty">
+            <i class="pi pi-spin pi-spinner"></i>
+            Carregando informações clínicas...
+          </div>
+        } @else {
+          <div class="tab-content">
+            @if (tab() === 'records') {
+              <div class="section-heading">
+                <div>
+                  <h3>Histórico de evoluções</h3>
+                  <p>Registros de acompanhamento psicológico</p>
+                </div>
+
+                @if (canWrite()) {
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    (click)="openForm('records')"
+                  >
+                    <i class="pi pi-plus"></i>
+                    Nova evolução
+                  </button>
+                }
+              </div>
+
+              @if (records().length === 0) {
+                <p class="empty">Nenhuma evolução registrada.</p>
+              }
+
+              <div class="record-list">
+                @for (record of records(); track record.id) {
+                  <article class="record-card">
+                    <div class="record-header">
+                      <strong>
+                        <i class="pi pi-calendar"></i>
+                        {{ formatDate(record.sessionDate) }}
+                      </strong>
+
+                      <small>
+                        {{ authorLabel(record.authorUid) }}
+                      </small>
+                    </div>
+
+                    <h4>Evolução psicológica</h4>
+                    <p class="record-text">{{ record.summary }}</p>
+
+                    @if (record.objectives) {
+                      <div class="record-extra">
+                        <strong>Objetivos / encaminhamentos</strong>
+                        <p>{{ record.objectives }}</p>
+                      </div>
+                    }
+                  </article>
+                }
+              </div>
+            }
+
+            @if (tab() === 'assessments') {
+              <div class="section-heading">
+                <div>
+                  <h3>Avaliações psicológicas</h3>
+                  <p>Histórico de avaliações e reavaliações</p>
+                </div>
+
+                @if (canWrite()) {
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    (click)="openForm('assessments')"
+                  >
+                    <i class="pi pi-plus"></i>
+                    Nova avaliação
+                  </button>
+                }
+              </div>
+
+              @if (assessments().length === 0) {
+                <p class="empty">
+                  Nenhuma avaliação cadastrada.
+                </p>
+              }
+
+              <div class="record-list">
+                @for (
+                    assessment of assessments();
+                  track assessment.id
+                  ) {
+                  <article class="record-card">
+                    <div class="record-header">
+                      <strong>
+                        {{ assessmentTypeLabel(assessment.type) }}
+                      </strong>
+
+                      <small>
+                        {{ formatDate(assessment.assessmentDate) }}
+                      </small>
+                    </div>
+
+                    <p class="author">
+                      Registrado por:
+                      {{ authorLabel(assessment.authorUid) }}
+                    </p>
+
+                    <h4>Objetivo</h4>
+                    <p class="record-text">
+                      {{ assessment.objective }}
+                    </p>
+
+                    @if (assessment.method) {
+                      <h4>Método</h4>
+                      <p class="record-text">
+                        {{ assessment.method }}
+                      </p>
+                    }
+
+                    @if (assessment.observations) {
+                      <h4>Observações</h4>
+                      <p class="record-text">
+                        {{ assessment.observations }}
+                      </p>
+                    }
+
+                    @if (assessment.conclusion) {
+                      <div class="record-extra">
+                        <strong>Conclusão</strong>
+                        <p>{{ assessment.conclusion }}</p>
+                      </div>
+                    }
+                  </article>
+                }
+              </div>
+            }
+
+            @if (tab() === 'diagnoses') {
+              <div class="section-heading">
+                <div>
+                  <h3>Diagnósticos e CID-10</h3>
+                  <p>Classificações registradas no acompanhamento</p>
+                </div>
+
+                @if (canWrite()) {
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    (click)="openForm('diagnoses')"
+                  >
+                    <i class="pi pi-plus"></i>
+                    Associar CID
+                  </button>
+                }
+              </div>
+
+              @if (diagnoses().length === 0) {
+                <p class="empty">
+                  Nenhum CID registrado.
+                </p>
+              }
+
+              <div class="diagnosis-list">
+                @for (
+                    diagnosis of diagnoses();
+                  track diagnosis.id
+                  ) {
+                  <article class="diagnosis-card">
+                    <span class="cid-code">
+                      {{ diagnosis.code }}
+                    </span>
+
+                    <div>
+                      <strong>{{ diagnosis.description }}</strong>
+
+                      <small>
+                        {{ diagnosisLabel(diagnosis.assessment) }}
+                        ·
+                        {{ formatDate(diagnosis.assessmentDate) }}
+                        ·
+                        {{ authorLabel(diagnosis.authorUid) }}
+                      </small>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+          </div>
+        }
+      </section>
+    }
+  </main>
+</div>
+
+@if (formMode()) {
+  <div class="modal-overlay">
+    <section
+      class="clinical-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="clinical-form-title"
+    >
+      <header class="dialog-header">
+        <h2 id="clinical-form-title">
+          @switch (formMode()) {
+            @case ('records') { Nova evolução }
+            @case ('assessments') { Nova avaliação }
+            @case ('diagnoses') { Associar CID }
+          }
+        </h2>
+
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          (click)="closeForm()"
+          [disabled]="saving()"
+        >
+          Fechar
+        </button>
+      </header>
+
+      @if (formMode() === 'records') {
+        <form (ngSubmit)="saveRecord()" #recordFormRef="ngForm">
+          <div class="dialog-body">
+            <div class="field">
+              <label for="sessionDate">Data da sessão *</label>
+              <input
+                id="sessionDate"
+                name="sessionDate"
+                type="date"
+                class="form-control"
+                required
+                [max]="currentDate"
+                [(ngModel)]="recordForm.sessionDate"
+              />
+            </div>
+
+            <div class="field">
+              <label for="recordSummary">Evolução *</label>
+              <textarea
+                id="recordSummary"
+                name="recordSummary"
+                class="form-control"
+                rows="6"
+                required
+                minlength="10"
+                maxlength="4000"
+                [(ngModel)]="recordForm.summary"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="recordObjectives">
+                Objetivos / encaminhamentos
+              </label>
+              <textarea
+                id="recordObjectives"
+                name="recordObjectives"
+                class="form-control"
+                rows="3"
+                maxlength="1000"
+                [(ngModel)]="recordForm.objectives"
+              ></textarea>
+            </div>
+          </div>
+
+          <footer class="dialog-footer">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              (click)="closeForm()"
+              [disabled]="saving()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              class="btn btn-primary"
+              type="submit"
+              [disabled]="saving() || recordFormRef.invalid"
+            >
+              {{ saving() ? 'Salvando...' : 'Salvar evolução' }}
+            </button>
+          </footer>
+        </form>
+      }
+
+      @if (formMode() === 'assessments') {
+        <form
+          (ngSubmit)="saveAssessment()"
+          #assessmentFormRef="ngForm"
+        >
+          <div class="dialog-body">
+            <div class="form-grid">
+              <div class="field">
+                <label for="assessmentDate">Data *</label>
+                <input
+                  id="assessmentDate"
+                  name="assessmentDate"
+                  type="date"
+                  class="form-control"
+                  required
+                  [max]="currentDate"
+                  [(ngModel)]="assessmentForm.assessmentDate"
+                />
+              </div>
+
+              <div class="field">
+                <label for="assessmentType">Tipo *</label>
+                <select
+                  id="assessmentType"
+                  name="assessmentType"
+                  class="form-select"
+                  [(ngModel)]="assessmentForm.type"
+                >
+                  <option value="initial">Avaliação inicial</option>
+                  <option value="follow_up">Reavaliação</option>
+                  <option value="other">Outra avaliação</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="assessmentObjective">Objetivo *</label>
+              <textarea
+                id="assessmentObjective"
+                name="assessmentObjective"
+                class="form-control"
+                rows="2"
+                required
+                minlength="5"
+                maxlength="1000"
+                [(ngModel)]="assessmentForm.objective"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="assessmentMethod">
+                Método / procedimento
+              </label>
+              <textarea
+                id="assessmentMethod"
+                name="assessmentMethod"
+                class="form-control"
+                rows="2"
+                maxlength="1000"
+                [(ngModel)]="assessmentForm.method"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="assessmentObservations">
+                Observações
+              </label>
+              <textarea
+                id="assessmentObservations"
+                name="assessmentObservations"
+                class="form-control"
+                rows="4"
+                maxlength="4000"
+                [(ngModel)]="assessmentForm.observations"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="assessmentConclusion">
+                Conclusão
+              </label>
+              <textarea
+                id="assessmentConclusion"
+                name="assessmentConclusion"
+                class="form-control"
+                rows="3"
+                maxlength="2000"
+                [(ngModel)]="assessmentForm.conclusion"
+              ></textarea>
+            </div>
+
+            <p class="helper">
+              Utilize apenas informações necessárias ao registro.
+              Não inclua itens protegidos de testes psicológicos.
+            </p>
+          </div>
+
+          <footer class="dialog-footer">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              (click)="closeForm()"
+              [disabled]="saving()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              class="btn btn-primary"
+              [disabled]="saving() || assessmentFormRef.invalid"
+            >
+              {{ saving() ? 'Salvando...' : 'Salvar avaliação' }}
+            </button>
+          </footer>
+        </form>
+      }
+
+      @if (formMode() === 'diagnoses') {
+        <form
+          (ngSubmit)="saveDiagnosis()"
+          #diagnosisFormRef="ngForm"
+        >
+          <div class="dialog-body">
+            <div class="field cid-autocomplete">
+              <label for="cidSearch">CID-10 *</label>
+              <input
+                id="cidSearch"
+                name="cidSearch"
+                class="form-control"
+                type="search"
+                placeholder="Busque pelo código ou descrição"
+                autocomplete="off"
+                role="combobox"
+                aria-autocomplete="list"
+                [attr.aria-expanded]="cidSuggestions().length > 0"
+                required
+                [ngModel]="cidSearch()"
+                (ngModelChange)="searchCid($event)"
+              />
+
+              @if (cidCatalogLoading()) {
+                <small class="field-hint">
+                  Carregando catálogo CID-10...
+                </small>
+              }
+
+              @if (cidSuggestions().length > 0) {
+                <div class="cid-suggestions" role="listbox">
+                  @for (cid of cidSuggestions(); track cid.code) {
+                    <button
+                      type="button"
+                      class="cid-option"
+                      role="option"
+                      (click)="selectCid(cid)"
+                    >
+                      <strong>{{ cid.code }}</strong>
+                      <span>{{ cid.description }}</span>
+                    </button>
+                  }
+                </div>
+              }
+
+              @if (diagnosisForm.code) {
+                <small class="field-hint">
+                  Código selecionado: {{ diagnosisForm.code }}
+                </small>
+              }
+            </div>
+
+            <div class="field">
+              <label>Descrição</label>
+              <input
+                class="form-control"
+                type="text"
+                [value]="diagnosisForm.description"
+                disabled
+              />
+            </div>
+
+            <div class="field">
+              <label for="diagnosisType">
+                Tipo de registro
+              </label>
+              <select
+                id="diagnosisType"
+                name="diagnosisType"
+                class="form-select"
+                [(ngModel)]="diagnosisForm.assessment"
+              >
+                <option value="hypothesis">
+                  Hipótese diagnóstica
+                </option>
+                <option value="confirmed">
+                  Diagnóstico registrado
+                </option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="diagnosisDate">Data *</label>
+              <input
+                id="diagnosisDate"
+                name="diagnosisDate"
+                type="date"
+                class="form-control"
+                required
+                [max]="currentDate"
+                [(ngModel)]="diagnosisForm.assessmentDate"
+              />
+            </div>
+
+            <p class="helper">
+              Registro clínico sujeito à avaliação
+              e responsabilidade profissional.
+            </p>
+          </div>
+
+          <footer class="dialog-footer">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              (click)="closeForm()"
+              [disabled]="saving()"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="submit"
+              class="btn btn-primary"
+              [disabled]="saving() || diagnosisFormRef.invalid"
+            >
+              {{ saving() ? 'Salvando...' : 'Associar CID' }}
+            </button>
+          </footer>
+        </form>
+      }
+    </section>
+  </div>
+}

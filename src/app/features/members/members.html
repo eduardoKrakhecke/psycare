@@ -1,21 +1,20 @@
 
 <section class="page-header">
   <div>
-    <p class="eyebrow">SEGURANÇA</p>
-    <h1>Usuários e acessos</h1>
+    <p class="eyebrow">ADMINISTRAÇÃO</p>
+    <h1>Usuários e permissões</h1>
     <p>
-      Administre as permissões dos usuários já vinculados à clínica.
+      Gerencie os usuários e vínculos profissionais da clínica.
     </p>
   </div>
 
   <button
+    class="btn btn-primary"
     type="button"
-    class="btn btn-outline-secondary"
-    (click)="reload()"
-    [disabled]="loading()"
+    (click)="newMemberOpen.set(!newMemberOpen())"
   >
-    <i class="pi pi-refresh"></i>
-    Atualizar
+    <i class="pi pi-plus"></i>
+    Vincular usuário
   </button>
 </section>
 
@@ -31,33 +30,105 @@
   </div>
 }
 
-<section class="notice">
-  <i class="pi pi-info-circle"></i>
-  <p>
-    Novos usuários são criados em
-    <strong>Firebase Authentication</strong>
-    e vinculados manualmente em
-    <code>clinics/clinica-principal/members</code>.
+@if (newMemberOpen()) {
+  <section class="panel p-4 mb-4">
+    <h2 class="fs-5 mb-3">Vincular novo usuário</h2>
 
-    Não há cadastro público nesta etapa.
-    O administrador inicial só pode ser alterado pelo Console.
-  </p>
-</section>
+    <p class="text-secondary">
+      Crie primeiro a conta no Firebase Authentication
+      e copie o UID correspondente.
+    </p>
+
+    <form (ngSubmit)="create()" #newMemberForm="ngForm">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="memberUid">UID *</label>
+          <input
+            id="memberUid"
+            name="memberUid"
+            class="form-control"
+            required
+            [(ngModel)]="newMember.uid"
+          />
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label" for="memberName">Nome *</label>
+          <input
+            id="memberName"
+            name="memberName"
+            class="form-control"
+            required
+            [(ngModel)]="newMember.name"
+          />
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label" for="memberRole">
+            Perfil *
+          </label>
+          <select
+            id="memberRole"
+            name="memberRole"
+            class="form-select"
+            [(ngModel)]="newMember.role"
+          >
+            <option value="receptionist">Recepcionista</option>
+            <option value="psychologist">Psicólogo</option>
+          </select>
+        </div>
+
+        @if (newMember.role === 'psychologist') {
+          <div class="col-md-6">
+            <label class="form-label" for="newProfessional">
+              Profissional *
+            </label>
+            <select
+              id="newProfessional"
+              name="newProfessional"
+              class="form-select"
+              required
+              [(ngModel)]="newMember.professionalId"
+            >
+              <option value="">Selecione</option>
+              @for (p of professionals(); track p.id) {
+                @if (p.active) {
+                  <option [value]="p.id">
+                    {{ p.fullName }} — {{ p.crp }}
+                  </option>
+                }
+              }
+            </select>
+          </div>
+        }
+      </div>
+
+      <div class="mt-3 d-flex justify-content-end">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="saving() || newMemberForm.invalid"
+        >
+          Salvar vínculo
+        </button>
+      </div>
+    </form>
+  </section>
+}
 
 <section class="panel">
   @if (loading()) {
     <p class="empty">Carregando usuários...</p>
-  } @else if (items().length === 0) {
-    <p class="empty">Nenhum usuário encontrado.</p>
   } @else {
     <div class="table-responsive">
       <table class="table align-middle mb-0">
         <thead>
         <tr>
-          <th>Nome</th>
+          <th>Usuário</th>
           <th>Perfil</th>
+          <th>Profissional vinculado</th>
           <th>Situação</th>
-          <th>Ação</th>
+          <th>Ações</th>
         </tr>
         </thead>
 
@@ -71,30 +142,45 @@
 
               @if (item.role === 'admin') {
                 <td>Administrador</td>
-
-                <td>
-                  {{ item.active ? 'Ativo' : 'Inativo' }}
-                </td>
-
-                <td>
-                  <span class="fixed">Protegido</span>
-                </td>
+                <td>Acesso completo</td>
+                <td>{{ item.active ? 'Ativo' : 'Inativo' }}</td>
+                <td><span class="fixed">Protegido</span></td>
               } @else {
                 <td>
                   <select
                     class="form-select"
                     [name]="'role-' + item.uid"
                     [(ngModel)]="drafts[item.uid].role"
-                    aria-label="Perfil de acesso"
                   >
-                    <option value="psychologist">
-                      Psicólogo
-                    </option>
-
+                    <option value="psychologist">Psicólogo</option>
                     <option value="receptionist">
                       Recepcionista
                     </option>
                   </select>
+                </td>
+
+                <td>
+                  @if (drafts[item.uid].role === 'psychologist') {
+                    <select
+                      class="form-select"
+                      [name]="'professional-' + item.uid"
+                      [(ngModel)]="drafts[item.uid].professionalId"
+                    >
+                      <option value="">Selecione</option>
+                      @for (p of professionals(); track p.id) {
+                        @if (
+                          p.active ||
+                          p.id === drafts[item.uid].professionalId
+                          ) {
+                          <option [value]="p.id">
+                            {{ p.fullName }}
+                          </option>
+                        }
+                      }
+                    </select>
+                  } @else {
+                    <span>Não se aplica</span>
+                  }
                 </td>
 
                 <td>
@@ -105,10 +191,7 @@
                       [name]="'active-' + item.uid"
                       [(ngModel)]="drafts[item.uid].active"
                     />
-
-                    <span class="form-check-label">
-                      Ativo
-                    </span>
+                    <span class="form-check-label">Ativo</span>
                   </label>
                 </td>
 
@@ -117,13 +200,9 @@
                     type="button"
                     class="btn btn-sm btn-primary"
                     (click)="save(item)"
-                    [disabled]="savingUid() !== null"
+                    [disabled]="saving()"
                   >
-                    {{
-                      savingUid() === item.uid
-                        ? 'Salvando...'
-                        : 'Salvar'
-                    }}
+                    Salvar
                   </button>
                 </td>
               }
@@ -133,8 +212,4 @@
       </table>
     </div>
   }
-
-  <p class="footnote">
-    Exibindo até 100 usuários nesta versão inicial.
-  </p>
 </section>

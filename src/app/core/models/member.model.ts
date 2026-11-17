@@ -12,4 +12,5 @@ export interface ClinicMember {
   name: string;
   role: UserRole;
   active: boolean;
+  professionalId?: string;
 }

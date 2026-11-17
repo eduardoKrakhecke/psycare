@@ -7,17 +7,27 @@ import {
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
+
 import { AuthService } from '../../core/auth/auth.service';
-import { MemberAdminService } from '../../core/services/member-admin.service';
+
+import { MemberAdminService }
+  from '../../core/services/member-admin.service';
+
+import { ProfessionalService }
+  from '../../core/services/professional.service';
 
 import type {
   ClinicMember,
   OperationalRole
 } from '../../core/models/member.model';
 
+import type { Professional }
+  from '../../core/models/professional.model';
+
 interface AccessDraft {
   role: OperationalRole;
   active: boolean;
+  professionalId: string;
 }
 
 @Component({
@@ -29,15 +39,28 @@ interface AccessDraft {
 })
 export class Members implements OnInit {
   private readonly service = inject(MemberAdminService);
+  private readonly professionalsService = inject(ProfessionalService);
 
   readonly auth = inject(AuthService);
+
   readonly items = signal<ClinicMember[]>([]);
+  readonly professionals = signal<Professional[]>([]);
+
   readonly loading = signal(false);
-  readonly savingUid = signal<string | null>(null);
+  readonly saving = signal(false);
   readonly error = signal('');
   readonly success = signal('');
 
+  readonly newMemberOpen = signal(false);
+
   drafts: Record<string, AccessDraft> = {};
+
+  newMember = {
+    uid: '',
+    name: '',
+    role: 'receptionist' as OperationalRole,
+    professionalId: ''
+  };
 
   ngOnInit(): void {
     void this.reload();
@@ -48,33 +71,49 @@ export class Members implements OnInit {
     this.error.set('');
 
     try {
-      const items = await this.service.list();
+      const [members, professionals] = await Promise.all([
+        this.service.list(),
+        this.professionalsService.list()
+      ]);
 
-      this.items.set(items);
+      this.items.set(members);
+      this.professionals.set(professionals);
 
       this.drafts = Object.fromEntries(
-        items
+        members
           .filter(item => item.role !== 'admin')
           .map(item => [
             item.uid,
             {
               role: item.role as OperationalRole,
-              active: item.active
+              active: item.active,
+              professionalId: item.professionalId ?? ''
             }
           ])
       );
     } catch {
       this.error.set(
-        'Não foi possível listar os membros. ' +
-        'Confirme seu perfil administrador.'
+        'Não foi possível carregar usuários e profissionais.'
       );
     } finally {
       this.loading.set(false);
     }
   }
 
+  private validProfessional(
+    role: OperationalRole,
+    professionalId: string
+  ): boolean {
+    if (role === 'receptionist') return true;
+
+    return this.professionals().some(item =>
+      item.id === professionalId && item.active
+    );
+  }
+
   async save(item: ClinicMember): Promise<void> {
     if (
+      this.saving() ||
       item.role === 'admin' ||
       item.uid === this.auth.currentUser()?.uid
     ) {
@@ -85,12 +124,18 @@ export class Members implements OnInit {
 
     if (
       !draft ||
-      !['psychologist', 'receptionist'].includes(draft.role)
+      !this.validProfessional(
+        draft.role,
+        draft.professionalId
+      )
     ) {
+      this.error.set(
+        'Selecione um psicólogo ativo para esse usuário.'
+      );
       return;
     }
 
-    this.savingUid.set(item.uid);
+    this.saving.set(true);
     this.error.set('');
     this.success.set('');
 
@@ -98,21 +143,72 @@ export class Members implements OnInit {
       await this.service.updateOperationalAccess(
         item.uid,
         draft.role,
-        draft.active
+        draft.active,
+        draft.professionalId
       );
 
       await this.reload();
-
-      this.success.set(
-        `Permissões de ${item.name} atualizadas.`
-      );
+      this.success.set('Permissões atualizadas com sucesso.');
     } catch {
       this.error.set(
-        'Não foi possível salvar as permissões. ' +
-        'Confira as regras do Firestore.'
+        'Não foi possível atualizar as permissões.'
       );
     } finally {
-      this.savingUid.set(null);
+      this.saving.set(false);
+    }
+  }
+
+  async create(): Promise<void> {
+    if (this.saving()) return;
+
+    const uid = this.newMember.uid.trim();
+    const name = this.newMember.name.trim();
+    const role = this.newMember.role;
+    const professionalId = this.newMember.professionalId;
+
+    if (
+      !/^[A-Za-z0-9_-]{6,128}$/.test(uid) ||
+      name.length < 2 ||
+      name.length > 120 ||
+      !this.validProfessional(role, professionalId)
+    ) {
+      this.error.set(
+        'Informe um UID válido, nome e profissional ativo ' +
+        'quando o perfil for psicólogo.'
+      );
+      return;
+    }
+
+    this.saving.set(true);
+    this.error.set('');
+    this.success.set('');
+
+    try {
+      await this.service.createMembership(
+        uid,
+        name,
+        role,
+        professionalId
+      );
+
+      this.newMemberOpen.set(false);
+      this.newMember = {
+        uid: '',
+        name: '',
+        role: 'receptionist',
+        professionalId: ''
+      };
+
+      await this.reload();
+
+      this.success.set('Usuário vinculado à clínica.');
+    } catch {
+      this.error.set(
+        'Não foi possível vincular o usuário. ' +
+        'Verifique se o UID está correto e ainda não foi utilizado.'
+      );
+    } finally {
+      this.saving.set(false);
     }
   }
 }

@@ -7,6 +7,7 @@ import {
   getDocs,
   limit,
   query,
+  setDoc,
   updateDoc
 } from 'firebase/firestore';
 
@@ -39,23 +40,46 @@ export class MemberAdminService {
         uid: item.id,
         name: String(item.data()['name'] ?? ''),
         role: item.data()['role'],
-        active: item.data()['active'] === true
+        active: item.data()['active'] === true,
+        professionalId: String(
+          item.data()['professionalId'] ?? ''
+        )
       } as ClinicMember))
       .sort((a, b) =>
         a.name.localeCompare(b.name, 'pt-BR')
       );
   }
 
+  async createMembership(
+    uid: string,
+    name: string,
+    role: OperationalRole,
+    professionalId: string
+  ): Promise<void> {
+    const reference = doc(firestore, ...this.path, uid);
+
+    await setDoc(reference, {
+      name,
+      role,
+      active: true,
+      professionalId:
+        role === 'psychologist' ? professionalId : ''
+    });
+  }
+
   async updateOperationalAccess(
     uid: string,
     role: OperationalRole,
-    active: boolean
+    active: boolean,
+    professionalId: string
   ): Promise<void> {
-    const ref = doc(firestore, ...this.path, uid);
+    const reference = doc(firestore, ...this.path, uid);
 
-    await updateDoc(ref, {
+    await updateDoc(reference, {
       role,
-      active
+      active,
+      professionalId:
+        role === 'psychologist' ? professionalId : ''
     });
   }
 }

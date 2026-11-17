@@ -1,0 +1,614 @@
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">GESTÃO FINANCEIRA</p>
+    <h1>Financeiro</h1>
+    <p>
+      Controle de cobranças, pagamentos e saldos dos pacientes.
+    </p>
+  </div>
+
+  @if (isAdmin()) {
+    <span class="access-label">
+      <i class="pi pi-shield"></i>
+      Administrador
+    </span>
+  } @else {
+    <span class="access-label">
+      <i class="pi pi-lock"></i>
+      Meus pacientes
+    </span>
+  }
+</section>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">
+    {{ error() }}
+  </div>
+}
+
+@if (success()) {
+  <div class="alert alert-success" role="status">
+    {{ success() }}
+  </div>
+}
+
+<section class="financial-stats">
+  <article class="stat-card">
+    <div class="stat-icon">
+      <i class="pi pi-wallet"></i>
+    </div>
+
+    <span>Saldo a receber</span>
+    <strong>{{ money(totalDue()) }}</strong>
+  </article>
+
+  <article class="stat-card">
+    <div class="stat-icon success">
+      <i class="pi pi-check-circle"></i>
+    </div>
+
+    <span>Total recebido</span>
+    <strong>{{ money(totalPaid()) }}</strong>
+  </article>
+
+  <article class="stat-card">
+    <div class="stat-icon danger">
+      <i class="pi pi-exclamation-triangle"></i>
+    </div>
+
+    <span>Valores vencidos</span>
+    <strong>{{ money(overdueTotal()) }}</strong>
+  </article>
+
+  <article class="stat-card">
+    <div class="stat-icon warning">
+      <i class="pi pi-users"></i>
+    </div>
+
+    <span>Pacientes com pendências</span>
+    <strong>{{ debtorsCount() }}</strong>
+  </article>
+</section>
+
+<div class="financial-layout">
+  <aside class="panel patients-panel">
+    <div class="panel-heading">
+      <h2>Pacientes</h2>
+
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        (click)="load()"
+        [disabled]="loading() || saving()"
+      >
+        <i class="pi pi-refresh"></i>
+      </button>
+    </div>
+
+    <div class="search-area">
+      <input
+        type="search"
+        class="form-control"
+        placeholder="Pesquisar paciente"
+        aria-label="Pesquisar paciente"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+    </div>
+
+    @if (loading()) {
+      <p class="empty">
+        <i class="pi pi-spin pi-spinner"></i>
+        Carregando financeiro...
+      </p>
+    } @else if (filteredPatients().length === 0) {
+      <p class="empty">Nenhum paciente encontrado.</p>
+    } @else {
+      <div class="patient-list">
+        @for (patient of filteredPatients(); track patient.id) {
+          <button
+            type="button"
+            class="patient-item"
+            [class.selected]="selectedPatientId() === patient.id"
+            [disabled]="saving()"
+            (click)="selectPatient(patient.id)"
+          >
+            <div class="patient-avatar">
+              <i class="pi pi-user"></i>
+            </div>
+
+            <div class="patient-info">
+              <strong>{{ patient.fullName }}</strong>
+
+              @if (patientDebt(patient.id) > 0) {
+                <small class="text-danger">
+                  Deve {{ money(patientDebt(patient.id)) }}
+                </small>
+              } @else {
+                <small class="text-success">
+                  Sem pendências registradas
+                </small>
+              }
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </aside>
+
+  <div class="financial-content">
+    @if (!selectedPatient()) {
+      <section class="panel empty-state">
+        <i class="pi pi-wallet"></i>
+        <h2>Selecione um paciente</h2>
+        <p>
+          Escolha um paciente para consultar cobranças,
+          registrar pagamentos e verificar pendências.
+        </p>
+      </section>
+    } @else {
+      <section class="panel patient-summary">
+        <div>
+          <p class="eyebrow">FINANCEIRO DO PACIENTE</p>
+          <h2>{{ selectedPatient()!.fullName }}</h2>
+
+          <p>
+            Saldo devedor:
+            <strong>{{ money(patientDebt(selectedPatientId())) }}</strong>
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="openChargeForm()"
+          [disabled]="saving() || !selectedPatient()!.active"
+        >
+          <i class="pi pi-plus"></i>
+          Nova cobrança
+        </button>
+      </section>
+
+      <section class="panel charges-panel">
+        <div class="panel-heading">
+          <h2>Cobranças</h2>
+          <span>{{ patientCharges().length }}</span>
+        </div>
+
+        @if (patientCharges().length === 0) {
+          <p class="empty">
+            Nenhuma cobrança cadastrada para este paciente.
+          </p>
+        } @else {
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Vencimento</th>
+                <th>Valor</th>
+                <th>Saldo</th>
+                <th>Situação</th>
+                <th>Ações</th>
+              </tr>
+              </thead>
+
+              <tbody>
+                @for (charge of patientCharges(); track charge.id) {
+                  <tr
+                    [class.selected-row]="
+                      selectedChargeId() === charge.id
+                    "
+                  >
+                    <td>
+                      <strong>{{ charge.description }}</strong>
+                    </td>
+
+                    <td>{{ formatDate(charge.dueDate) }}</td>
+
+                    <td>{{ money(charge.amountCents) }}</td>
+
+                    <td>{{ money(balance(charge)) }}</td>
+
+                    <td>
+                      <span
+                        class="status"
+                        [class]="statusClass(charge)"
+                      >
+                        {{ statusLabel(charge) }}
+                      </span>
+                    </td>
+
+                    <td>
+                      <div class="table-actions">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-primary"
+                          (click)="selectCharge(charge.id)"
+                        >
+                          Detalhes
+                        </button>
+
+                        @if (
+                          charge.status === 'open' &&
+                          charge.paidCents === 0
+                          ) {
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            (click)="cancelCharge(charge)"
+                            [disabled]="saving()"
+                          >
+                            Cancelar
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      @if (selectedCharge()) {
+        <section class="panel payments-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Pagamentos da cobrança</h2>
+              <p>{{ selectedCharge()!.description }}</p>
+            </div>
+
+            @if (
+              balance(selectedCharge()!) > 0 &&
+              selectedCharge()!.status !== 'cancelled'
+              ) {
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                (click)="openNewPayment()"
+              >
+                <i class="pi pi-plus"></i>
+                Registrar pagamento
+              </button>
+            }
+          </div>
+
+          <div class="payment-summary">
+            <div>
+              <span>Valor original</span>
+              <strong>
+                {{ money(selectedCharge()!.amountCents) }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Total pago</span>
+              <strong class="text-success">
+                {{ money(selectedCharge()!.paidCents) }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Saldo pendente</span>
+              <strong>
+                {{ money(balance(selectedCharge()!)) }}
+              </strong>
+            </div>
+          </div>
+
+          @if (loadingHistory()) {
+            <p class="empty">Carregando pagamentos...</p>
+          } @else if (payments().length === 0) {
+            <p class="empty">
+              Nenhum pagamento registrado nesta cobrança.
+            </p>
+          } @else {
+            <div class="table-responsive">
+              <table class="table align-middle mb-0">
+                <thead>
+                <tr>
+                  <th>Data do registro</th>
+                  <th>Forma</th>
+                  <th>Valor</th>
+                  <th>Última atualização</th>
+                  <th>Ação</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                  @for (payment of payments(); track payment.id) {
+                    <tr>
+                      <td>
+                        {{ formatTimestamp(payment.recordedAt) }}
+                      </td>
+
+                      <td>
+                        {{ paymentMethods[payment.method] }}
+                        @if (payment.note) {
+                          <small class="payment-note">
+                            {{ payment.note }}
+                          </small>
+                        }
+                      </td>
+
+                      <td>
+                        <strong>
+                          {{ money(payment.amountCents) }}
+                        </strong>
+                      </td>
+
+                      <td>
+                        {{ formatTimestamp(payment.updatedAt) }}
+                      </td>
+
+                      <td>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-primary"
+                          (click)="openEditPayment(payment)"
+                          [disabled]="saving()"
+                        >
+                          <i class="pi pi-pencil"></i>
+                          Editar
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <div class="history-section">
+            <h3>
+              <i class="pi pi-history"></i>
+              Histórico de alterações
+            </h3>
+
+            @if (edits().length === 0) {
+              <p class="empty">
+                Nenhuma edição registrada nesta cobrança.
+              </p>
+            } @else {
+              @for (edit of edits(); track edit.id) {
+                <article class="history-item">
+                  <div>
+                    <strong>
+                      {{ money(edit.previousAmountCents) }}
+                      →
+                      {{ money(edit.newAmountCents) }}
+                    </strong>
+
+                    <small>
+                      {{ paymentMethods[edit.previousMethod] }}
+                      →
+                      {{ paymentMethods[edit.newMethod] }}
+                    </small>
+
+                    @if (edit.previousNote !== edit.newNote) {
+                      <small>
+                        Observação anterior:
+                        {{ edit.previousNote || 'Sem observação' }}
+                      </small>
+
+                      <small>
+                        Nova observação:
+                        {{ edit.newNote || 'Sem observação' }}
+                      </small>
+                    }
+                  </div>
+
+                  <div class="history-metadata">
+                    <small>
+                      {{ formatTimestamp(edit.changedAt) }}
+                    </small>
+
+                    <small>
+                      Usuário: {{ edit.changedBy.slice(0, 12) }}
+                    </small>
+                  </div>
+                </article>
+              }
+            }
+          </div>
+        </section>
+      }
+    }
+  </div>
+</div>
+
+@if (chargeFormOpen()) {
+  <div class="modal-overlay">
+    <section
+      class="financial-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="charge-title"
+    >
+      <div class="dialog-heading">
+        <h2 id="charge-title">Nova cobrança</h2>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          (click)="chargeFormOpen.set(false)"
+          [disabled]="saving()"
+        >
+          Fechar
+        </button>
+      </div>
+
+      <form (ngSubmit)="saveCharge()" #chargeNgForm="ngForm">
+        <div class="dialog-body">
+          <div class="field">
+            <label for="chargeDescription">Descrição *</label>
+            <input
+              id="chargeDescription"
+              name="chargeDescription"
+              class="form-control"
+              required
+              minlength="3"
+              maxlength="150"
+              [(ngModel)]="chargeForm.description"
+            />
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="chargeAmount">Valor (R$) *</label>
+              <input
+                id="chargeAmount"
+                name="chargeAmount"
+                class="form-control"
+                placeholder="150,00"
+                inputmode="decimal"
+                required
+                [(ngModel)]="chargeForm.amount"
+              />
+            </div>
+
+            <div class="field">
+              <label for="chargeDueDate">Vencimento *</label>
+              <input
+                id="chargeDueDate"
+                name="chargeDueDate"
+                type="date"
+                class="form-control"
+                required
+                [(ngModel)]="chargeForm.dueDate"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="dialog-footer">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            (click)="chargeFormOpen.set(false)"
+            [disabled]="saving()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="saving() || chargeNgForm.invalid"
+          >
+            {{ saving() ? 'Salvando...' : 'Criar cobrança' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
+
+@if (paymentFormOpen()) {
+  <div class="modal-overlay">
+    <section
+      class="financial-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="payment-title"
+    >
+      <div class="dialog-heading">
+        <h2 id="payment-title">
+          {{
+            editingPayment()
+              ? 'Editar pagamento'
+              : 'Registrar pagamento'
+          }}
+        </h2>
+
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          (click)="closePaymentForm()"
+          [disabled]="saving()"
+        >
+          Fechar
+        </button>
+      </div>
+
+      <form (ngSubmit)="savePayment()" #paymentNgForm="ngForm">
+        <div class="dialog-body">
+          <div class="field">
+            <label for="paymentAmount">Valor (R$) *</label>
+            <input
+              id="paymentAmount"
+              name="paymentAmount"
+              class="form-control"
+              inputmode="decimal"
+              required
+              [(ngModel)]="paymentForm.amount"
+            />
+          </div>
+
+          <div class="field">
+            <label for="paymentMethod">Forma de pagamento *</label>
+            <select
+              id="paymentMethod"
+              name="paymentMethod"
+              class="form-select"
+              required
+              [(ngModel)]="paymentForm.method"
+            >
+              <option value="pix">Pix</option>
+              <option value="cash">Dinheiro</option>
+              <option value="card">Cartão</option>
+              <option value="transfer">Transferência</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="paymentNote">Observação</label>
+            <textarea
+              id="paymentNote"
+              name="paymentNote"
+              class="form-control"
+              rows="3"
+              maxlength="200"
+              [(ngModel)]="paymentForm.note"
+            ></textarea>
+          </div>
+
+          @if (editingPayment()) {
+            <p class="edit-warning">
+              <i class="pi pi-history"></i>
+              A edição será registrada no histórico.
+              O saldo devedor será atualizado automaticamente.
+            </p>
+          }
+        </div>
+
+        <div class="dialog-footer">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            (click)="closePaymentForm()"
+            [disabled]="saving()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="saving() || paymentNgForm.invalid"
+          >
+            {{
+              saving()
+                ? 'Salvando...'
+                : editingPayment()
+                  ? 'Salvar alterações'
+                  : 'Confirmar pagamento'
+            }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}

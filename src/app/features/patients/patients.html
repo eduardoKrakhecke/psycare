@@ -330,6 +330,7 @@
             id="professionalId"
             name="professionalId"
             class="form-select"
+            [disabled]="editingPatient() !== null && !isAdmin()"
             required
             [(ngModel)]="form.professionalId"
           >

@@ -13,8 +13,11 @@ import {
   RouterOutlet
 } from '@angular/router';
 
-import { AuthService } from '../../core/auth/auth.service';
-import { MemberService } from '../../core/auth/member.service';
+import { AuthService }
+  from '../../core/auth/auth.service';
+
+import { MemberService }
+  from '../../core/auth/member.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -38,6 +41,20 @@ export class MainLayout {
   readonly isAdmin = computed(() =>
     this.memberService.currentMember()?.role === 'admin'
   );
+
+  readonly canAccessClinical = computed(() =>
+    ['admin', 'psychologist'].includes(
+      this.memberService.currentMember()?.role ?? ''
+    )
+  );
+
+
+  readonly canAccessFinancial = computed(() =>
+    ['admin', 'psychologist'].includes(
+      this.memberService.currentMember()?.role ?? ''
+    )
+  );
+
 
   readonly canManageAppointments = computed(() =>
     ['admin', 'receptionist'].includes(
@@ -68,7 +85,9 @@ export class MainLayout {
 
   async logout(): Promise<void> {
     await this.authService.logout();
+
     this.memberService.clear();
+
     await this.router.navigateByUrl('/login');
   }
 }

@@ -32,6 +32,17 @@ export const routes: Routes = [
             .then(m => m.Dashboard)
       },
       {
+        path: 'appointments',
+        title: 'Agenda | PsyCare',
+        canActivate: [roleGuard],
+        data: {
+          roles: ['admin', 'receptionist']
+        },
+        loadComponent: () =>
+          import('./features/appointments/appointments')
+            .then(m => m.Appointments)
+      },
+      {
         path: 'patients',
         title: 'Pacientes | PsyCare',
         canActivate: [roleGuard],
@@ -54,15 +65,15 @@ export const routes: Routes = [
             .then(m => m.Professionals)
       },
       {
-        path: 'appointments',
-        title: 'Agenda | PsyCare',
+        path: 'clinical',
+        title: 'Prontuários e avaliações | PsyCare',
         canActivate: [roleGuard],
         data: {
-          roles: ['admin', 'receptionist']
+          roles: ['admin', 'psychologist']
         },
         loadComponent: () =>
-          import('./features/appointments/appointments')
-            .then(m => m.Appointments)
+          import('./features/clinical/clinical')
+            .then(m => m.Clinical)
       },
       {
         path: 'members',
@@ -74,7 +85,20 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/members/members')
             .then(m => m.Members)
-      }
+      },
+
+      {
+        path: 'financial',
+        title: 'Financeiro | PsyCare',
+        canActivate: [roleGuard],
+        data: {
+          roles: ['admin', 'psychologist']
+        },
+        loadComponent: () =>
+          import('./features/financial/financial')
+            .then(m => m.Financial)
+      },
+
     ]
   },
   {

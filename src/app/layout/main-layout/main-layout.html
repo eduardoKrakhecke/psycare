@@ -6,9 +6,7 @@
       <span>PsyCare</span>
     </div>
 
-    <p class="section-label">
-      GESTÃO DA CLÍNICA
-    </p>
+    <p class="section-label">GESTÃO DA CLÍNICA</p>
 
     <a
       routerLink="/dashboard"
@@ -48,7 +46,31 @@
       </a>
     }
 
+    @if (canAccessClinical()) {
+      <p class="section-label">GESTÃO CLÍNICA</p>
+
+      <a
+        routerLink="/clinical"
+        routerLinkActive="selected"
+      >
+        <i class="pi pi-file-edit"></i>
+        Prontuários e avaliações
+      </a>
+    }
+
+    @if (canAccessFinancial()) {
+      <a
+        routerLink="/financial"
+        routerLinkActive="selected"
+      >
+        <i class="pi pi-wallet"></i>
+        Financeiro
+      </a>
+    }
+
     @if (isAdmin()) {
+      <p class="section-label">ADMINISTRAÇÃO</p>
+
       <a
         routerLink="/members"
         routerLinkActive="selected"
@@ -57,14 +79,6 @@
         Usuários e acessos
       </a>
     }
-
-    <div class="upcoming">
-      <i class="pi pi-file-edit"></i>
-      <span>
-        Prontuários e CID serão adicionados
-        na próxima etapa.
-      </span>
-    </div>
 
     <div class="sidebar-bottom">
       PsyCare • Firebase Spark
@@ -81,10 +95,12 @@
         <button
           type="button"
           class="icon-button"
-          (click)="toggleTheme()"
           aria-label="Alternar tema"
+          (click)="toggleTheme()"
         >
-          <i [class]="dark() ? 'pi pi-sun' : 'pi pi-moon'"></i>
+          <i
+            [class]="dark() ? 'pi pi-sun' : 'pi pi-moon'"
+          ></i>
         </button>
 
         <span class="user-email">

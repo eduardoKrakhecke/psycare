@@ -115,6 +115,12 @@ export class Patients implements OnInit {
   readonly patients = signal<Patient[]>([]);
   readonly professionals = signal<Professional[]>([]);
 
+
+  readonly isAdmin = computed(() =>
+    this.memberService.currentMember()?.role === 'admin'
+  );
+
+
   readonly loading = signal(false);
   readonly saving = signal(false);
 

@@ -61,7 +61,15 @@ export class ProfessionalService {
         member.professionalId
       );
 
-      return professional ? [professional] : [];
+      if (professional) {
+        return [professional];
+      }
+
+      // Permite ao administrador corrigir um vínculo antigo,
+      // removido ou ainda não migrado no ambiente de produção.
+      if (member.role !== 'admin') {
+        return [];
+      }
     }
 
     const ref = collection(firestore, ...this.path);

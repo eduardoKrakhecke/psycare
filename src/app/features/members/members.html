@@ -155,7 +155,10 @@
                   >
                     <option value="">Selecione o profissional</option>
                     @for (p of professionals(); track p.id) {
-                      @if (p.active) {
+                      @if (
+                        p.active ||
+                        p.id === ownerProfessionalDrafts[item.uid]
+                      ) {
                         <option [value]="p.id">
                           {{ p.fullName }} — {{ p.crp }}
                         </option>

@@ -377,12 +377,14 @@ service cloud.firestore {
       );
 
       allow list: if isAdmin(clinicId)
+        && myProfessionalId(clinicId) == ''
+        && request.query.limit <= 100;
+
+      allow list: if isAdmin(clinicId)
+        && myProfessionalId(clinicId) != ''
         && request.query.limit <= 100
-        && (
-          myProfessionalId(clinicId) == ''
-          || resource.data.professionalId
-            == myProfessionalId(clinicId)
-        );
+        && resource.data.professionalId
+          == myProfessionalId(clinicId);
 
       allow create: if isAdmin(clinicId)
         && memberId != request.auth.uid
